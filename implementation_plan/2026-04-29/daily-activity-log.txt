@@ -1,0 +1,106 @@
+================================================================================
+  DAILY INFRASTRUCTURE ACTIVITY LOG
+  Date     : 2026-04-29 (Tuesday)
+  Engineer : Pavan SD
+  Project  : Lawyered — AWS EKS + RDS
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+  TASK 1  : PostgreSQL RDS (core-uat-db) Provisioning
+  TASK 2  : Standalone Redis Infrastructure Removal
+  TASK 3  : EKS Cluster Stability & Node Group Scaling
+  TASK 4  : Full Repository Push (A-to-Z) using Git LFS
+
+
+================================================================================
+  TASK 1 : PostgreSQL RDS (core-uat-db) Provisioning
+  Status : COMPLETED ✅
+================================================================================
+
+REQUIREMENT
+-----------
+  Provision a new standalone PostgreSQL database for the UAT environment.
+
+CONFIGURATION
+-------------
+  - Resource Name: aws_db_instance.this["core-uat-db"]
+  - Engine: PostgreSQL 15.x
+  - Instance Class: db.t4g.medium
+  - Storage: 30GB GP3
+  - Auto-Scaling: Enabled (max_allocated_storage = 500GB)
+  - Security Group: lawyered-database-sg
+  - Subnets: stg-mb-database-subnet-group
+
+RESULT
+------
+  Endpoint: core-uat-db.cj446ammul0i.ap-south-1.rds.amazonaws.com:5432
+  Status: Available and connected.
+
+
+================================================================================
+  TASK 2 : Standalone Redis Infrastructure Removal
+  Status : COMPLETED ✅
+================================================================================
+
+RATIONALE
+---------
+  Decommissioning unused Redis resources to reduce cost and infrastructure complexity.
+
+ACTIONS TAKEN
+-------------
+  1. Deleted module.redis_box from the root main.tf.
+  2. Removed the helm_release.redis resource.
+  3. Physically deleted the resources/modules/redis/ directory from the codebase.
+
+
+================================================================================
+  TASK 3 : EKS Cluster Stability & Node Group Scaling
+  Status : RESOLVED ✅
+================================================================================
+
+PROBLEM
+-------
+  Encountered "API Server Timeout" and connection resets when running Terraform.
+
+CAUSE
+-----
+  The EKS Managed Node Group was scaling down from 4 nodes to 1 node during the infrastructure changes, causing transient unavailability of the Kubernetes control plane communication.
+
+SOLUTION
+--------
+  Stabilized the node group and synchronized the Terraform state. The cluster is now responsive.
+
+
+================================================================================
+  TASK 4 : Full Repository Push (A-to-Z) using Git LFS
+  Status : IN PROGRESS ⏳
+================================================================================
+
+REQUIREMENT
+-----------
+  Push every single file in the repository (including .terraform cache and binaries) to GitHub.
+
+TECHNICAL CHALLENGE
+-------------------
+  GitHub rejects files larger than 100MB. The .terraform folder contains AWS provider binaries exceeding 800MB.
+
+SOLUTION
+--------
+  Implemented Git LFS (Large File Storage) to track and upload these heavy files.
+
+COMMANDS USED
+-------------
+  - git lfs install
+  - git lfs track "*.exe"
+  - git add .
+  - git commit -m "Include all files A to Z including large binaries using Git LFS"
+  - git push origin main
+
+STATUS
+------
+  The push is currently uploading ~1.8 GB of data to the remote repository.
+
+================================================================================
+  END OF DAILY LOG — 2026-04-29
+================================================================================

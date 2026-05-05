@@ -1,0 +1,33 @@
+﻿apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stg-admin-lawyered
+  namespace: argo-cd
+  labels:
+    app: stg-admin-lawyered
+    tier: application
+    environment: stg
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Lawyered-in/k8s-manifest.git
+    targetRevision: staging
+    path: deployments/stg-admin-lawyered
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stg
+  ignoreDifferences:
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/volumeName
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ServerSideApply=true
+  revisionHistoryLimit: 3

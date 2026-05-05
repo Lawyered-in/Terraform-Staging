@@ -1,0 +1,34 @@
+# ============================================================
+# ArgoCD Application Manifest — prosper-fe
+# ------------------------------------------------------------
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stg-prosper-fe
+  namespace: argo-cd
+  labels:
+    app: stg-prosper-fe
+    tier: application
+    environment: stg
+spec:
+  project: default
+
+  source:
+    repoURL: git@github.com:Lawyered-in/k8s-manifest.git
+    targetRevision: staging
+    path: deployments/stg-prosper-fe
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stg
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - ServerSideApply=true
+  revisionHistoryLimit: 3

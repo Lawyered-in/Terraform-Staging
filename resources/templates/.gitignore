@@ -1,0 +1,24 @@
+# # Terraform files
+# *.tfstate
+# *.tfstate.*
+# .terraform/
+# .terraform.lock.hcl
+
+# # Private keys - NEVER commit these!
+# keys/
+# *.pem
+# *.key
+
+# # Variable files with sensitive data
+# *.tfvars
+# !terraform.tfvars.example
+
+# # Crash log files
+# crash.log
+# crash.*.log
+
+# # Override files
+# override.tf
+# override.tf.json
+# *_override.tf
+# *_override.tf.json

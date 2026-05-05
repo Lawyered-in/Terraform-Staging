@@ -1,0 +1,25 @@
+# Cluster Autoscaler configuration
+autoDiscovery:
+  clusterName: ${cluster_name}
+
+awsRegion: ${aws_region}
+
+rbac:
+  create: true
+  serviceAccount:
+    name: cluster-autoscaler
+    annotations:
+      eks.amazonaws.com/role-arn: ${role_arn}
+
+extraArgs:
+  v: 4
+  stderrthreshold: info
+  logtostderr: true
+  skip-nodes-with-local-storage: false
+  expander: least-waste
+  balance-similar-node-groups: true
+  skip-nodes-with-system-pods: false
+
+image:
+  repository: registry.k8s.io/autoscaling/cluster-autoscaler
+  tag: v1.35.0

@@ -1,0 +1,13 @@
+# Local .terraform directories (Large provider binaries)
+**/.terraform/*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Note: The user explicitly requested to KEEP pushing .tfvars and .tfstate files.
+# So they are NOT added to this ignore list.
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc

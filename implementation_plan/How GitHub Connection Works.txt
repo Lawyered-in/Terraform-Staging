@@ -1,0 +1,273 @@
+================================================================================
+                    HOW GITHUB CONNECTION WORKS
+                    Lawyered Infrastructure - AWS CodeStar Connection
+================================================================================
+
+
+OVERVIEW
+--------
+In your Terraform setup, all 7 CodePipelines (lawyered-in-website, admin-lawyered,
+admin-lawyered-fe, partners-portal-fe, challanpay-fe-next, api-challans, qr-api)
+are connected to GitHub using a SINGLE shared AWS CodeStar Connection.
+
+This connection acts like a trust bridge between your AWS account and the
+Lawyered-in GitHub Organization.
+
+
+================================================================================
+PART 1 — THE CONNECTION RESOURCE (templates/main.tf, line 278)
+================================================================================
+
+    resource "aws_codeconnections_connection" "github" {
+      name          = "lawyered-github-repository"
+      provider_type = "GitHub"
+    }
+
+What this does:
+  - Creates ONE connection in AWS Developer Tools
+  - Name in AWS Console: "lawyered-github-repository"
+  - Provider: GitHub (OAuth-based authorization)
+  - This resource is NOT per-service. It is shared across all pipelines.
+
+Important:
+  When Terraform creates this resource for the first time, the connection
+  status is "PENDING". It does NOT automatically work.
+
+  You had to go to:
+    AWS Console > Developer Tools > Connections > lawyered-github-repository
+    > Click "Update pending connection" > Authorize with GitHub account
+
+  After that one-time manual approval, the connection status becomes "AVAILABLE"
+  and all 7 pipelines can use it forever.
+
+
+================================================================================
+PART 2 — HOW ALL 7 PIPELINES SHARE THIS ONE CONNECTION (templates/main.tf, line 286)
+================================================================================
+
+    module "codepipeline" {
+      source   = "../modules/codepipeline"
+      for_each = var.codepipelines    <-- loops over all 7 services in tfvars
+
+      pipeline_name         = "${each.key}-pipeline"
+      github_connection_arn = aws_codeconnections_connection.github.arn   <-- SAME connection for all 7
+      repository_id         = each.value.repository_id    <-- different repo per service
+      branch_name           = each.value.branch_name      <-- "staging" for all
+      ecr_repository_url    = module.ecr[each.value.ecr_key].repository_url
+      prefetch_images       = each.value.prefetch_images
+      build_args            = each.value.build_args
+      tags                  = each.value.tags
+    }
+
+What this means:
+  - Terraform creates 7 CodePipeline instances via for_each
+  - Each pipeline gets the SAME github_connection_arn
+  - Each pipeline watches a DIFFERENT repository and branch
+  - The connection ARN looks like:
+    arn:aws:codeconnections:ap-south-1:344367180480:connection/57bb41a6-94e5-4be9-9364-73bc9da899d3
+
+  This ARN is also hardcoded in terraform.tfvars as a backup reference:
+    github_connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/57bb41a6-94e5-4be9-9364-73bc9da899d3"
+
+
+================================================================================
+PART 3 — HOW EACH PIPELINE IS CONFIGURED IN TFVARS (templates/terraform.tfvars)
+================================================================================
+
+  codepipelines = {
+
+    lawyered-in-website = {
+      repository_id   = "Lawyered-in/lawyered-in-website"   <-- GitHub org/repo
+      branch_name     = "staging"                            <-- which branch to watch
+      ecr_key         = "lawyered-in-website"               <-- which ECR repo to push to
+      prefetch_images = ["node:20-alpine"]                   <-- base image for Docker build
+    }
+
+    admin-lawyered-fe = {
+      repository_id   = "Lawyered-in/admin-lawyered-fe"
+      branch_name     = "staging"
+      ecr_key         = "admin-lawyered-fe"
+      prefetch_images = ["node:20-alpine"]
+      build_args = {
+        VITE_API_URL          = "https://api-staging.lawyered.in"
+        VITE_ENV              = "production"
+        VITE_ENABLE_TELEMETRY = "false"
+      }
+    }
+
+    admin-lawyered = {
+      repository_id   = "Lawyered-in/admin-lawyered"
+      branch_name     = "staging"
+      ecr_key         = "admin-lawyered"
+      prefetch_images = ["node:20-alpine"]
+    }
+
+    partners-portal-fe = {
+      repository_id   = "Lawyered-in/partners-portal-fe"
+      branch_name     = "staging"
+      ecr_key         = "partners-portal-fe"
+      prefetch_images = ["node:20-alpine"]
+    }
+
+    challanpay-fe-next = {
+      repository_id   = "Lawyered-in/challanpay-fe-next"
+      branch_name     = "staging"
+      ecr_key         = "challanpay-fe-next"
+      prefetch_images = ["node:20-alpine"]
+    }
+
+    api-challans = {
+      repository_id   = "Lawyered-in/api-challans"
+      branch_name     = "staging"
+      ecr_key         = "api-challans"
+      prefetch_images = ["node:20-alpine"]
+    }
+
+    qr-api = {
+      repository_id   = "Lawyered-in/qr-api"
+      branch_name     = "staging"
+      ecr_key         = "qr-api"
+      prefetch_images = ["node:20-alpine"]
+    }
+  }
+
+
+================================================================================
+PART 4 — WHAT HAPPENS INSIDE CODEPIPELINE MODULE (modules/codepipeline/main.tf)
+================================================================================
+
+Inside the codepipeline module, the Source stage uses the connection like this:
+
+    stage {
+      name = "Source"
+      action {
+        name             = "Source"
+        category         = "Source"
+        owner            = "AWS"
+        provider         = "CodeStarSourceConnection"
+        version          = "1"
+        output_artifacts = ["source_output"]
+
+        configuration = {
+          ConnectionArn    = var.github_connection_arn        <-- shared connection
+          FullRepositoryId = var.repository_id                <-- e.g. Lawyered-in/lawyered-in-website
+          BranchName       = var.branch_name                  <-- "staging"
+        }
+      }
+    }
+
+What happens step by step:
+  1. Developer pushes code to staging branch on GitHub
+  2. GitHub sends a webhook event to AWS (via the CodeStar Connection)
+  3. CodePipeline Source stage wakes up
+  4. It downloads the source code from that specific repo + branch
+  5. Packages it as a ZIP called "source_output"
+  6. Stores the ZIP in S3: lawyered-in-website-artifacts-344367180480
+  7. Passes source_output to the Build stage (CodeBuild)
+
+
+================================================================================
+PART 5 — IAM PERMISSIONS (How AWS is allowed to talk to GitHub)
+================================================================================
+
+The CodePipeline role needs permission to USE the connection:
+
+    resource "aws_iam_role_policy" "pipeline" {
+      policy = jsonencode({
+        Statement = [
+          {
+            Action   = ["codestar-connections:UseConnection"]
+            Effect   = "Allow"
+            Resource = var.github_connection_arn    <-- permission to use this specific connection
+          },
+          ...
+        ]
+      })
+    }
+
+Without this permission, CodePipeline cannot pull code from GitHub even if the
+connection is "AVAILABLE".
+
+
+================================================================================
+PART 6 — FULL ARCHITECTURE DIAGRAM (Text Version)
+================================================================================
+
+  GitHub Organization: Lawyered-in
+  |
+  |-- Repo: lawyered-in-website  (branch: staging)
+  |-- Repo: admin-lawyered-fe    (branch: staging)
+  |-- Repo: admin-lawyered       (branch: staging)
+  |-- Repo: partners-portal-fe   (branch: staging)
+  |-- Repo: challanpay-fe-next   (branch: staging)
+  |-- Repo: api-challans         (branch: staging)
+  |-- Repo: qr-api               (branch: staging)
+       |
+       | (webhook on push to staging branch)
+       |
+       v
+  AWS CodeStar Connection: "lawyered-github-repository"
+  ARN: arn:aws:codeconnections:ap-south-1:344367180480:connection/57bb41a6-...
+  Status: AVAILABLE (after one-time manual approval)
+       |
+       | (one connection shared by all 7 pipelines)
+       |
+       +--------> CodePipeline: lawyered-in-website
+       |               |
+       |               v
+       |          CodeBuild: lawyered-in-website-build
+       |               |
+       |               v
+       |          ECR: lawyered-in-website:latest + :<commit-hash>
+       |
+       +--------> CodePipeline: admin-lawyered-fe
+       |               v ... (same pattern)
+       |
+       +--------> CodePipeline: qr-api
+                      v ... (same pattern)
+
+
+================================================================================
+PART 7 — KEY POINTS TO REMEMBER
+================================================================================
+
+  1. ONE connection for all repos
+     You dont need a separate connection per service. One is enough for the
+     entire Lawyered-in GitHub organization.
+
+  2. One-time manual approval required
+     After terraform apply, you MUST go to AWS Console and approve the
+     pending connection. Without this, all pipelines will fail with
+     "Connection is not authorized" error.
+
+  3. Connection ARN is hardcoded in tfvars as a reference
+     github_connection_arn in terraform.tfvars is for reference.
+     In main.tf, the actual ARN comes from the live resource:
+       aws_codeconnections_connection.github.arn
+
+  4. Webhook is automatic
+     Once the connection is AVAILABLE, GitHub automatically sends webhook
+     events to AWS on every push to staging. No manual trigger needed.
+
+  5. All pipelines watch "staging" branch only
+     If someone pushes to main or any other branch, pipelines will NOT trigger.
+     Only pushes to "staging" branch trigger the build.
+
+
+================================================================================
+FILE REFERENCE SUMMARY
+================================================================================
+
+  File                                         | What it does for GitHub connection
+  ---------------------------------------------|---------------------------------------
+  templates/main.tf (line 278)                 | Creates the shared connection resource
+  templates/main.tf (line 286)                 | Passes connection ARN to all 7 pipelines
+  templates/terraform.tfvars (line 219+)       | Defines repo and branch per service
+  modules/codepipeline/main.tf (line 189)      | Uses connection in Source stage
+  modules/codepipeline/main.tf (line 36-60)    | IAM policy to allow UseConnection
+  modules/codepipeline/variables.tf (line 6)   | github_connection_arn variable definition
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================

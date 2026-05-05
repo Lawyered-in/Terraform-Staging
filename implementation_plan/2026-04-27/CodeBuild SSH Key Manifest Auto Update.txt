@@ -1,0 +1,212 @@
+================================================================================
+        CODEBUILD SSH KEY - K8S MANIFEST AUTO UPDATE
+        Implementation Plan & Task Log
+        Date: 2026-04-27
+================================================================================
+
+
+WHAT ARE WE DOING
+-----------------
+When a developer pushes code to staging branch on GitHub, CodeBuild builds the
+Docker image and pushes it to ECR. After that, CodeBuild automatically updates
+the deployment.yaml in the k8s-manifest repo with the new image tag using an
+SSH key stored in AWS Secrets Manager.
+
+
+================================================================================
+TASK 1 - ADD NEW VARIABLES TO CODEPIPELINE MODULE
+File: modules/codepipeline/variables.tf
+Status: DONE
+================================================================================
+
+Added two new variables:
+
+  variable "manifest_file_path"
+    - Type   : string
+    - Default : ""
+    - Purpose : Path inside k8s-manifest repo to update
+    - Example : "deployments/stg-lawyered-in-website"
+
+  variable "github_token_secret_name"
+    - Type   : string
+    - Default : "lawyered/github/token"
+    - Purpose : AWS Secrets Manager secret name holding the SSH private key
+    - Actual  : "github-connection-key"
+
+
+================================================================================
+TASK 2 - UPDATE IAM POLICY IN CODEBUILD ROLE
+File: modules/codepipeline/main.tf
+Status: DONE
+================================================================================
+
+Added new IAM statement to aws_iam_role_policy.build:
+
+  {
+    Action   = ["secretsmanager:GetSecretValue"]
+    Effect   = "Allow"
+    Resource = "*"
+  }
+
+Why: CodeBuild needs permission to read the SSH private key from Secrets Manager
+     during the post_build phase. Without this, the build would get Access Denied.
+
+
+================================================================================
+TASK 3 - UPDATE POST_BUILD IN CODEBUILD BUILDSPEC
+File: modules/codepipeline/main.tf
+Status: DONE
+================================================================================
+
+Added these commands AFTER docker push in post_build:
+
+  Step 1: mkdir -p ~/.ssh
+          Creates SSH directory in CodeBuild container
+
+  Step 2: aws secretsmanager get-secret-value
+            --secret-id github-connection-key
+            --query SecretString --output text > ~/.ssh/id_rsa
+          Fetches the SSH private key from Secrets Manager and writes to file
+
+  Step 3: chmod 600 ~/.ssh/id_rsa
+          Sets correct permissions (SSH won't work without this)
+
+  Step 4: ssh-keyscan github.com >> ~/.ssh/known_hosts
+          Adds GitHub to known hosts so SSH doesn't reject the connection
+
+  Step 5: git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest
+          Clones the manifest repo using SSH
+
+  Step 6: cd /tmp/k8s-manifest && git checkout staging
+          Switches to the staging branch
+
+  Step 7: sed -i "s|image: .*<repo-name>:.*|image: <REPOS_URL>:<IMAGE_TAG>|g"
+            deployments/stg-<service-name>/deployment.yaml
+          Replaces the old image tag with the new commit hash
+
+  Step 8: git config user.email / user.name
+          Sets Git identity for the commit
+
+  Step 9: git diff --cached --quiet || git commit -m "ci: update <service> to <hash>"
+          Only commits if there is an actual change (prevents empty commits)
+
+  Step 10: git push origin staging
+           Pushes the updated manifest back to GitHub
+
+
+================================================================================
+TASK 4 - UPDATE VARIABLES.TF IN TEMPLATES
+File: templates/variables.tf
+Status: DONE
+================================================================================
+
+Updated the codepipelines variable object type to include:
+
+  manifest_file_path       = optional(string, "")
+  github_token_secret_name = optional(string, "lawyered/github/token")
+
+This tells Terraform that these are valid fields when defining pipelines in tfvars.
+
+
+================================================================================
+TASK 5 - UPDATE MAIN.TF IN TEMPLATES (MODULE CALL)
+File: templates/main.tf
+Status: DONE
+================================================================================
+
+Updated the module "codepipeline" call to:
+
+  1. Pass manifest_file_path from each.value
+  2. Pass github_token_secret_name = aws_secretsmanager_secret.github_ssh_key.name
+     (hardcoded to the actual secret resource instead of reading from tfvars)
+
+
+================================================================================
+TASK 6 - CREATE SECRETS MANAGER SECRET (NEW RESOURCE)
+File: templates/main.tf
+Status: DONE
+================================================================================
+
+Added two new Terraform resources:
+
+  Resource 1: aws_secretsmanager_secret.github_ssh_key
+    - name                    = "github-connection-key"
+    - description             = "SSH private key for CodeBuild manifest push"
+    - recovery_window_in_days = 0  (can delete immediately without waiting 30 days)
+    - Tags: Environment=stage, Project=lawyered, Purpose=codebuild-github-push
+
+  Resource 2: aws_secretsmanager_secret_version.github_ssh_key
+    - secret_string = "PLACEHOLDER"
+    - lifecycle { ignore_changes = [secret_string] }
+      --> Terraform creates the version with placeholder text
+      --> After that, Terraform will NEVER touch secret_string again
+      --> You manually paste the real SSH key in AWS Console
+
+
+================================================================================
+TASK 7 - UPDATE TERRAFORM.TFVARS (ALL 7 SERVICES)
+File: templates/terraform.tfvars
+Status: DONE
+================================================================================
+
+Added manifest_file_path to all 7 pipeline entries:
+
+  lawyered-in-website   --> deployments/stg-lawyered-in-website
+  admin-lawyered-fe     --> deployments/stg-admin-lawyered-fe
+  admin-lawyered        --> deployments/stg-admin-lawyered
+  partners-portal-fe    --> deployments/stg-partners-portal-fe
+  challanpay-fe-next    --> deployments/stg-challanpay-fe-next
+  api-challans          --> deployments/stg-api-challans
+  qr-api                --> deployments/stg-qr-api
+
+
+================================================================================
+POST APPLY MANUAL STEPS REQUIRED
+================================================================================
+
+  STEP 1: terraform apply (apply all the above changes)
+
+  STEP 2: Go to AWS Console
+          --> Secrets Manager
+          --> github-connection-key
+          --> Retrieve secret value --> Edit
+          --> Paste the SSH private key (full content of id_rsa file)
+          --> Save
+
+  STEP 3: Make sure the SSH key has WRITE access to Lawyered-in/k8s-manifest
+          Options:
+            A) Add as a Deploy Key with "Allow write access" on GitHub repo settings
+            B) Use an org-level SSH key that already has access
+
+  STEP 4: Test by pushing any change to staging branch of any service repo
+          --> Check CodeBuild logs --> post_build phase
+          --> Check k8s-manifest repo --> staging branch --> new commit should appear
+
+
+================================================================================
+WHY SSH KEY INSTEAD OF GITHUB PAT TOKEN
+================================================================================
+
+  - Argo CD already uses SSH key to read from k8s-manifest repo
+  - SSH keys are more secure (no token expiry issues)
+  - CodeStar Connection (used for pipeline trigger) is READ-ONLY
+  - CodeBuild needs WRITE access to push manifest updates
+  - SSH key stored in Secrets Manager = centrally managed, access controlled by IAM
+
+
+================================================================================
+FILE CHANGE SUMMARY
+================================================================================
+
+  File                                        | Change Type  | What Changed
+  --------------------------------------------|--------------|---------------------------
+  modules/codepipeline/variables.tf           | MODIFIED     | 2 new variables added
+  modules/codepipeline/main.tf                | MODIFIED     | IAM policy + post_build SSH logic
+  templates/variables.tf                      | MODIFIED     | 2 new fields in codepipelines type
+  templates/main.tf                           | MODIFIED     | New secret resource + module update
+  templates/terraform.tfvars                  | MODIFIED     | manifest_file_path for all 7 services
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================
