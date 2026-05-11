@@ -21,7 +21,7 @@ metadata:
     environment: stg
 spec:
   project: default
-
+  
   # Source: which Git repo + branch + folder ArgoCD watches
   source:
     repoURL: git@github.com:Lawyered-in/k8s-manifest.git

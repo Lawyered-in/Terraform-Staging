@@ -78,6 +78,9 @@ variable "rds_instances" {
     deletion_protection     = optional(bool, false)
     skip_final_snapshot     = optional(bool, true)
     apply_immediately       = optional(bool, false)
+    allow_major_version_upgrade = optional(bool, false)
+    parameter_group_name    = optional(string, null)
+    parameter_group_family  = optional(string, null)
     tags                    = optional(map(string), {})
   }))
   default = {}

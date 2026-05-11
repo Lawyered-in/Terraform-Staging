@@ -107,6 +107,18 @@ variable "apply_immediately" {
   default     = false
 }
 
+variable "parameter_group_name" {
+  type        = string
+  description = "Name of the DB parameter group to associate"
+  default     = null
+}
+
+variable "allow_major_version_upgrade" {
+  type        = bool
+  description = "Allow major version upgrades"
+  default     = false
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags to apply to the RDS instance"

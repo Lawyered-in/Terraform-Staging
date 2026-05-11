@@ -143,7 +143,8 @@ module "rds" {
   storage_encrypted = each.value.storage_encrypted
   db_name           = each.value.db_name
   username          = each.value.username
-  password          = each.value.password
+  # Pull the password from Secrets Manager if it's managed there, otherwise use the password from tfvars.
+  password          = contains(keys(aws_secretsmanager_secret_version.rds_secrets), each.key) ? aws_secretsmanager_secret_version.rds_secrets[each.key].secret_string : each.value.password
   vpc_id            = module.vpc[each.value.vpc_key].vpc_id
   subnet_ids = [for k in each.value.subnet_keys : try(
     module.vpc[each.value.vpc_key].database_subnet_ids[k],
@@ -155,9 +156,25 @@ module "rds" {
   deletion_protection     = each.value.deletion_protection
   skip_final_snapshot     = each.value.skip_final_snapshot
   apply_immediately       = each.value.apply_immediately
+  allow_major_version_upgrade = each.value.allow_major_version_upgrade
+  parameter_group_name    = each.value.parameter_group_name != null ? aws_db_parameter_group.rds[each.key].name : null
   tags                    = each.value.tags
 
-  depends_on = [module.vpc]
+  depends_on = [module.vpc, aws_db_parameter_group.rds]
+}
+
+# -------------------------------------------------------------------
+# RDS Parameter Groups — for_each over var.rds_instances
+# Only creates a parameter group if parameter_group_name is provided
+# -------------------------------------------------------------------
+resource "aws_db_parameter_group" "rds" {
+  for_each = { for k, v in var.rds_instances : k => v if v.parameter_group_name != null && v.parameter_group_family != null }
+
+  name        = each.value.parameter_group_name
+  family      = each.value.parameter_group_family
+  description = "Custom parameter group for ${each.key}"
+
+  tags = each.value.tags
 }
 
 # -------------------------------------------------------------------
@@ -305,6 +322,44 @@ resource "aws_secretsmanager_secret_version" "github_ssh_key" {
   lifecycle {
     ignore_changes = [secret_string]   # Terraform will never overwrite your manually set value
   }
+}
+
+# -------------------------------------------------------------------
+# RDS Password Management
+# Creates Secrets Manager resources for specific databases (finvica, lawyered-backend-new)
+# -------------------------------------------------------------------
+
+locals {
+  managed_secret_instances = ["finvica", "lawyered-backend-new"]
+}
+
+# 1. Create the Secret containers in Secrets Manager
+resource "aws_secretsmanager_secret" "rds_secrets" {
+  for_each                = toset([for k in local.managed_secret_instances : k if contains(keys(var.rds_instances), k)])
+  name                    = "${each.key}-db-secrets"
+  description             = "Master password for the ${each.key} RDS instance (Staging)"
+  recovery_window_in_days = 0
+
+  tags = merge(var.rds_instances[each.key].tags, {
+    Purpose = "rds-authentication"
+  })
+}
+
+moved {
+  from = aws_secretsmanager_secret.finvica_db_secrets[0]
+  to   = aws_secretsmanager_secret.rds_secrets["finvica"]
+}
+
+moved {
+  from = aws_secretsmanager_secret_version.finvica_db_secrets[0]
+  to   = aws_secretsmanager_secret_version.rds_secrets["finvica"]
+}
+
+# 2. Store the actual password value in the Secret Version
+resource "aws_secretsmanager_secret_version" "rds_secrets" {
+  for_each      = aws_secretsmanager_secret.rds_secrets
+  secret_id     = each.value.id
+  secret_string = var.rds_instances[each.key].password
 }
 
 # -------------------------------------------------------------------

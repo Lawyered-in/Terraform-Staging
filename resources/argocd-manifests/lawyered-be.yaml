@@ -1,0 +1,30 @@
+# ArgoCD Application manifest for lawyered-be
+# This manifest defines how ArgoCD should sync the kubernetes resources from the k8s-manifest repository.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stg-lawyered-be
+  namespace: argo-cd
+  labels:
+    app: stg-lawyered-be
+    tier: application
+    environment: stg
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Lawyered-in/k8s-manifest.git # Repository containing K8s manifests
+    targetRevision: staging                             # Branch to sync from
+    path: deployments/stg-lawyered-be                   # Path within the repo
+  destination:
+    server: https://kubernetes.default.svc              # Destination cluster
+    namespace: stg                                      # Target namespace
+  syncPolicy:
+    automated:
+      prune: true                                       # Remove resources not in git
+      selfHeal: true                                    # Automatically fix drifts
+    syncOptions:
+      - CreateNamespace=true                            # Create the 'stg' namespace if it doesn't exist
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - Replace=true
+  revisionHistoryLimit: 3                               # Keep only last 3 revisions

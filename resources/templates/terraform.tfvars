@@ -257,6 +257,34 @@ ecr_repositories = {
       Project     = "prosper-wealth"
     }
   }
+  # ------------------------------------------------------------------
+  # subscriber-fe
+  # ECR Repository for the Subscriber Frontend application.
+  # ------------------------------------------------------------------
+  subscriber-fe = {
+    name                 = "subscriber-fe"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
+  # ------------------------------------------------------------------
+  # lawyered-be
+  # ECR Repository for the Lawyered Backend application.
+  # ------------------------------------------------------------------
+  lawyered-be = {
+    name                 = "lawyered-be"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
 }
 # -------------------------------------------------------------------
 # Aurora Cluster Configurations
@@ -282,7 +310,7 @@ aurora_clusters = {
 rds_instances = {
   core-uat-db = {
     engine                = "postgres"
-    engine_version        = "15" # More flexible version identifier
+    engine_version        = "18.3" # Upgraded to PostgreSQL 18 as requested
     instance_class        = "db.t4g.medium"
     allocated_storage     = 30
     max_allocated_storage = 500
@@ -293,9 +321,64 @@ rds_instances = {
     subnet_keys           = ["stg-mb-database-subnet01", "stg-mb-database-subnet02", "stg-mb-database-subnet03"]
     multi_az              = false
     skip_final_snapshot   = true
+    parameter_group_name  = "core-uat-db-pg"
+    parameter_group_family = "postgres18"
+    allow_major_version_upgrade = true
     tags = {
       Environment = "uat"
       Project     = "core"
+      Role        = "database-rds"
+    }
+  }
+
+  # -------------------------------------------------------------------
+  # New PostgreSQL RDS for Staging: finvica
+  # Configured with storage autoscaling and db.t4g.medium instance class
+  # -------------------------------------------------------------------
+  finvica = {
+    engine                 = "postgres"
+    engine_version         = "18.3"                     # Updated to exact version string supported by the API (18.3)
+    instance_class         = "db.t4g.medium"            # Standard burstable instance for staging workloads
+    allocated_storage      = 30                         # Initial storage size in GB
+    max_allocated_storage  = 100                        # Set to 100 GB as a safe autoscaling limit
+    db_name                = "finvica"                  # Initial database name created on startup
+    username               = "dbadmin"                  # Master username (changed from 'admin' as it is reserved)
+    password               = "F1nvic4-Stg-2026-S3cur3#" # Complex password for finvica
+    vpc_key                = "stg-mb-vpc01"             # VPC where the database will reside
+    subnet_keys            = ["stg-mb-database-subnet01", "stg-mb-database-subnet02", "stg-mb-database-subnet03"]
+    multi_az               = false                        # Single AZ deployment for cost optimization in staging
+    skip_final_snapshot    = true                         # Skip snapshot on destruction to speed up cleanup in staging
+    parameter_group_name   = "finvica-db-parameter-group" # Custom parameter group name as requested
+    parameter_group_family = "postgres18"                 # Family for PostgreSQL 18
+    tags = {
+      Environment = "staging"
+      Project     = "finvica"
+      Role        = "database-rds"
+    }
+  }
+
+  # -------------------------------------------------------------------
+  # New PostgreSQL RDS: lawyered-backend-new
+  # Clone of finvica configuration with 50 GB storage
+  # -------------------------------------------------------------------
+  lawyered-backend-new = {
+    engine                 = "postgres"
+    engine_version         = "18.3"
+    instance_class         = "db.t4g.medium"
+    allocated_storage      = 50
+    max_allocated_storage  = 100
+    db_name                = "lawyered_backend_new"
+    username               = "dbadmin"
+    password               = "Lawyered-Backend-2026-Secure#91^" # Complex password for lawyered-backend-new
+    vpc_key                = "stg-mb-vpc01"
+    subnet_keys            = ["stg-mb-database-subnet01", "stg-mb-database-subnet02", "stg-mb-database-subnet03"]
+    multi_az               = false
+    skip_final_snapshot    = true
+    parameter_group_name   = "lawyered-backend-new-db-parameter-group"
+    parameter_group_family = "postgres18"
+    tags = {
+      Environment = "staging"
+      Project     = "lawyered"
       Role        = "database-rds"
     }
   }
@@ -517,6 +600,44 @@ codepipelines = {
     tags = {
       Environment = "stage"
       Project     = "prosper-wealth"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # subscriber-fe Pipeline
+  # Manages CI/CD for subscriber-fe.
+  # Source: Lawyered-in/subscriber-fe (staging branch)
+  # Destination: ECR (subscriber-fe) & k8s-manifests (deployments/stg-subscriber-fe)
+  # ------------------------------------------------------------------
+  subscriber-fe = {
+    repository_id      = "Lawyered-in/subscriber-fe"
+    branch_name        = "staging"
+    ecr_key            = "subscriber-fe"
+    prefetch_images    = ["node:20-alpine"]
+    manifest_file_path = "deployments/stg-subscriber-fe"
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # lawyered-be Pipeline
+  # Manages CI/CD for lawyered-be.
+  # Source: Lawyered-in/lawyered-be (staging branch)
+  # Destination: ECR (lawyered-be) & k8s-manifests (deployments/stg-lawyered-be)
+  # ------------------------------------------------------------------
+  lawyered-be = {
+    repository_id      = "Lawyered-in/lawyered-be"
+    branch_name        = "staging"
+    ecr_key            = "lawyered-be"
+    prefetch_images    = ["node:20-alpine"]
+    manifest_file_path = "deployments/stg-lawyered-be"
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
       Service     = "pipeline"
     }
   }

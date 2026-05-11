@@ -56,7 +56,9 @@ resource "aws_db_instance" "this" {
   skip_final_snapshot     = var.skip_final_snapshot
   final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.identifier}-final-snapshot"
 
-  apply_immediately = var.apply_immediately
+  apply_immediately           = var.apply_immediately
+  allow_major_version_upgrade = var.allow_major_version_upgrade
+  parameter_group_name        = var.parameter_group_name
 
   tags = merge({ Name = var.identifier }, var.tags)
 }
