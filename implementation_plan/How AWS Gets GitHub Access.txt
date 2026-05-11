@@ -155,6 +155,7 @@ In modules/codepipeline/main.tf:
     }
 
 Without this:
+
   - The connection could be AVAILABLE
   - But CodePipeline would get "Access Denied" when trying to pull from GitHub
   - The IAM policy is the second layer of security
