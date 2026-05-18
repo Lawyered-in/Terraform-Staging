@@ -1,0 +1,70 @@
+version: 0.2
+env:
+  variables:
+    REGION: "ap-south-1"
+    PROD_ROLE_ARN: "arn:aws:iam::857277800188:role/ProdECRPushRole"
+    K8S_MANIFEST_REPO: "git@github.com:Lawyered-in/k8s-manifest.git"
+    GITHUB_TOKEN_SECRET_NAME: "github-connection-key"
+    STAGING_REGISTRY: "344367180480.dkr.ecr.ap-south-1.amazonaws.com"
+    PROD_REGISTRY: "857277800188.dkr.ecr.ap-south-1.amazonaws.com"
+phases:
+  pre_build:
+    commands:
+      - echo "Prod Promotion | Service=$SERVICE_NAME | Image=$IMAGE_TAG"
+      - STAGING_ECR_URL="${STAGING_REGISTRY}/${SERVICE_NAME}"
+      - PROD_ECR_URL="${PROD_REGISTRY}/${SERVICE_NAME}"
+      - |
+        CREDS=$(aws sts assume-role \
+          --role-arn "$PROD_ROLE_ARN" \
+          --role-session-name "ProdECRPush-${SERVICE_NAME}-${IMAGE_TAG}" \
+          --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
+          --output text)
+        aws configure set region $REGION --profile staging
+        aws configure set credential_source EcsContainer --profile staging
+        aws configure set aws_access_key_id $(echo $CREDS | awk '{print $1}') --profile prod
+        aws configure set aws_secret_access_key $(echo $CREDS | awk '{print $2}') --profile prod
+        aws configure set aws_session_token $(echo $CREDS | awk '{print $3}') --profile prod
+        aws configure set region $REGION --profile prod
+      - aws ecr get-login-password --region $REGION --profile staging | docker login --username AWS --password-stdin $STAGING_REGISTRY
+      - aws ecr get-login-password --region $REGION --profile prod | docker login --username AWS --password-stdin $PROD_REGISTRY
+  build:
+    commands:
+      - STAGING_ECR_URL="${STAGING_REGISTRY}/${SERVICE_NAME}"
+      - PROD_ECR_URL="${PROD_REGISTRY}/${SERVICE_NAME}"
+      - echo "Pulling ${STAGING_ECR_URL}:${IMAGE_TAG} from staging ECR"
+      - aws ecr get-login-password --region $REGION --profile staging | docker login --username AWS --password-stdin $STAGING_REGISTRY
+      - docker pull ${STAGING_ECR_URL}:${IMAGE_TAG}
+      - docker tag ${STAGING_ECR_URL}:${IMAGE_TAG} ${PROD_ECR_URL}:${IMAGE_TAG}
+      - docker tag ${STAGING_ECR_URL}:${IMAGE_TAG} ${PROD_ECR_URL}:latest
+      - echo "Pushing ${PROD_ECR_URL}:${IMAGE_TAG} to prod ECR"
+      - aws ecr get-login-password --region $REGION --profile prod | docker login --username AWS --password-stdin $PROD_REGISTRY
+      - docker push ${PROD_ECR_URL}:${IMAGE_TAG}
+      - docker push ${PROD_ECR_URL}:latest
+      - echo "Push complete"
+  post_build:
+    commands:
+      - PROD_ECR_URL="${PROD_REGISTRY}/${SERVICE_NAME}"
+      - DEPLOYMENT_FILE="deployments/${SERVICE_NAME}/deployment.yaml"
+      - mkdir -p ~/.ssh
+      - aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --profile staging --query SecretString --output text > ~/.ssh/id_rsa
+      - chmod 600 ~/.ssh/id_rsa
+      - ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - git clone $K8S_MANIFEST_REPO /tmp/k8s-manifest
+      - cd /tmp/k8s-manifest && git checkout main
+      - |
+        PROD_ECR_URL="${PROD_REGISTRY}/${SERVICE_NAME}"
+        DEPLOYMENT_FILE="deployments/prod-${SERVICE_NAME}/deployment.yaml"
+        cd /tmp/k8s-manifest
+        sed -i "s|image: .*${SERVICE_NAME}:.*|image: ${PROD_ECR_URL}:${IMAGE_TAG}|g" ${DEPLOYMENT_FILE}
+      - cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in'
+      - cd /tmp/k8s-manifest && git config user.name 'CodeBuild CI'
+      - DEPLOYMENT_FILE="deployments/prod-${SERVICE_NAME}/deployment.yaml"
+      - cd /tmp/k8s-manifest && git add ${DEPLOYMENT_FILE}
+      - |
+        cd /tmp/k8s-manifest
+        git diff --cached --quiet || git commit -m "Updated ${SERVICE_NAME} image to ${IMAGE_TAG} [skip ci]"
+      - cd /tmp/k8s-manifest && git push origin main
+      - echo "Prod manifest updated for $SERVICE_NAME"
+artifacts:
+  files:
+    - imagedefinitions.json

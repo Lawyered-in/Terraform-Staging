@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # ArgoCD Application Manifest â€” coworking-platform-fe
 # ------------------------------------------------------------
 # This tells ArgoCD to watch the k8s-manifest GitHub repo
@@ -25,7 +25,7 @@ spec:
   # Source: which Git repo + branch + folder ArgoCD watches
   source:
     repoURL: git@github.com:Lawyered-in/k8s-manifest.git
-    targetRevision: staging            # watches the staging branch
+    targetRevision: staging            # tracks promoted changes on main branch
     path: deployments/stg-coworking-platform-fe  # folder containing deployment.yaml
 
   # Destination: where in EKS to deploy

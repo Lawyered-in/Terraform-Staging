@@ -124,3 +124,15 @@ variable "tags" {
   description = "Tags to apply to the RDS instance"
   default     = {}
 }
+
+variable "publicly_accessible" {
+  type        = bool
+  description = "Whether the DB should be publicly accessible"
+  default     = false
+}
+
+variable "db_subnet_group_name" {
+  type        = string
+  description = "Optional override for DB subnet group name"
+  default     = null
+}

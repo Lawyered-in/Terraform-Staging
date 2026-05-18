@@ -95,3 +95,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "db_subnet_group_name" {
+  type        = string
+  description = "Optional override for DB subnet group name"
+  default     = null
+}

@@ -13,7 +13,7 @@ spec:
   project: default
   source:
     repoURL: git@github.com:Lawyered-in/k8s-manifest.git # Repository containing K8s manifests
-    targetRevision: staging                             # Branch to sync from
+    targetRevision: staging            # tracks promoted changes on main branch
     path: deployments/stg-subscriber-fe                 # Path within the repo
   destination:
     server: https://kubernetes.default.svc              # Destination cluster

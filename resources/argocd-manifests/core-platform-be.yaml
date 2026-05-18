@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # ArgoCD Application Manifest â€” core-platform-be
 # ------------------------------------------------------------
 # This tells ArgoCD to watch the k8s-manifest GitHub repo
@@ -9,6 +9,7 @@
 #   CodePipeline builds image â†’ pushes to ECR
 #   â†’ updates deployment.yaml in k8s-manifest (staging branch)
 #   â†’ ArgoCD detects the change here â†’ deploys to EKS namespace stg
+#   â†’ After manual approval, promoted to main branch for production.
 # ============================================================
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -25,7 +26,7 @@ spec:
   # Source: which Git repo + branch + folder ArgoCD watches
   source:
     repoURL: git@github.com:Lawyered-in/k8s-manifest.git
-    targetRevision: staging            # watches the staging branch
+    targetRevision: staging            # tracks promoted changes on main branch
     path: deployments/stg-core-platform-be  # folder containing deployment.yaml
 
   # Destination: where in EKS to deploy

@@ -1,4 +1,4 @@
-﻿apiVersion: argoproj.io/v1alpha1
+apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: stg-admin-lawyered-fe
@@ -11,7 +11,7 @@ spec:
   project: default
   source:
     repoURL: git@github.com:Lawyered-in/k8s-manifest.git
-    targetRevision: staging
+    targetRevision: staging            # tracks promoted changes on main branch
     path: deployments/stg-admin-lawyered-fe
   destination:
     server: https://kubernetes.default.svc

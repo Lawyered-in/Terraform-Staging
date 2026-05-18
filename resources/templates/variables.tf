@@ -81,6 +81,8 @@ variable "rds_instances" {
     allow_major_version_upgrade = optional(bool, false)
     parameter_group_name    = optional(string, null)
     parameter_group_family  = optional(string, null)
+    publicly_accessible     = optional(bool, false)
+    db_subnet_group_name    = optional(string)
     tags                    = optional(map(string), {})
   }))
   default = {}
@@ -133,7 +135,6 @@ variable "kms_keys" {
     deletion_window_in_days = optional(number, 30)
     enable_key_rotation     = optional(bool, true)
     multi_region            = optional(bool, false)
-    policy                  = optional(string, null)
     tags                    = optional(map(string), {})
   }))
   default = {}
@@ -196,6 +197,7 @@ variable "aurora_clusters" {
     backup_retention_period = optional(number, 7)
     deletion_protection     = optional(bool, false)
     skip_final_snapshot     = optional(bool, true)
+    db_subnet_group_name    = optional(string)
     tags                    = optional(map(string), {})
   }))
   default = {}
@@ -217,13 +219,35 @@ variable "codepipelines" {
     pipeline_name            = optional(string)
     repository_id            = string
     branch_name              = optional(string, "staging")
+    manifest_branch          = optional(string, "staging")
     ecr_key                  = string
     prefetch_images          = optional(list(string), [])
     build_args               = optional(map(string), {})
     manifest_file_path       = optional(string, "")
     github_token_secret_name = optional(string)
     connection_arn           = optional(string)
-    tags                     = optional(map(string), {})
+    build_image              = optional(string)
+    build_namespace          = optional(string)
+    exported_variables       = optional(list(string), [])
+    extra_stages = optional(list(object({
+      name = string
+      action = list(object({
+        name             = string
+        category         = string
+        owner            = string
+        provider         = string
+        version          = string
+        input_artifacts  = optional(list(string), [])
+        output_artifacts = optional(list(string), [])
+        configuration    = optional(map(string), {})
+        role_arn         = optional(string)
+        namespace        = optional(string)
+      }))
+    })), [])
+    custom_pre_build_commands  = optional(list(string))
+    custom_build_commands      = optional(list(string))
+    custom_post_build_commands = optional(list(string))
+    tags = optional(map(string), {})
   }))
   description = "Map of CodePipelines to create"
   default     = {}

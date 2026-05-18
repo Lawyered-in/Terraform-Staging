@@ -21,7 +21,7 @@ resource "aws_security_group" "this" {
 # DB Subnet Group
 # -------------------------------------------------------------------
 resource "aws_db_subnet_group" "this" {
-  name        = "${var.cluster_identifier}-subnet-group"
+  name        = var.db_subnet_group_name != null ? var.db_subnet_group_name : "${var.cluster_identifier}-subnet-group"
   subnet_ids  = var.subnet_ids
   description = "DB subnet group for ${var.cluster_identifier}"
 

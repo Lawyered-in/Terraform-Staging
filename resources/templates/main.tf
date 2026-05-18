@@ -148,7 +148,8 @@ module "rds" {
   vpc_id            = module.vpc[each.value.vpc_key].vpc_id
   subnet_ids = [for k in each.value.subnet_keys : try(
     module.vpc[each.value.vpc_key].database_subnet_ids[k],
-    module.vpc[each.value.vpc_key].private_subnet_ids[k]
+    module.vpc[each.value.vpc_key].private_subnet_ids[k],
+    module.vpc[each.value.vpc_key].public_subnet_ids[k]
   )]
   vpc_security_group_ids  = each.value.vpc_security_group_ids
   multi_az                = each.value.multi_az
@@ -157,6 +158,8 @@ module "rds" {
   skip_final_snapshot     = each.value.skip_final_snapshot
   apply_immediately       = each.value.apply_immediately
   allow_major_version_upgrade = each.value.allow_major_version_upgrade
+  publicly_accessible     = each.value.publicly_accessible
+  db_subnet_group_name    = each.value.db_subnet_group_name
   parameter_group_name    = each.value.parameter_group_name != null ? aws_db_parameter_group.rds[each.key].name : null
   tags                    = each.value.tags
 
@@ -208,12 +211,14 @@ module "aurora" {
   vpc_id                  = module.vpc[each.value.vpc_key].vpc_id
   subnet_ids = [for k in each.value.subnet_keys : try(
     module.vpc[each.value.vpc_key].database_subnet_ids[k],
-    module.vpc[each.value.vpc_key].private_subnet_ids[k]
+    module.vpc[each.value.vpc_key].private_subnet_ids[k],
+    module.vpc[each.value.vpc_key].public_subnet_ids[k]
   )]
   preferred_az            = each.value.preferred_az
   backup_retention_period = each.value.backup_retention_period
   deletion_protection     = each.value.deletion_protection
   skip_final_snapshot     = each.value.skip_final_snapshot
+  db_subnet_group_name    = each.value.db_subnet_group_name
   tags                    = each.value.tags
 
   depends_on = [module.vpc]
@@ -373,14 +378,147 @@ module "codepipeline" {
   github_connection_arn    = try(coalesce(each.value.connection_arn, var.github_connection_arn, aws_codeconnections_connection.github.arn), aws_codeconnections_connection.github.arn)
   repository_id            = each.value.repository_id
   branch_name              = each.value.branch_name
+  manifest_branch          = each.value.manifest_branch
   ecr_repository_url       = module.ecr[each.value.ecr_key].repository_url
   prefetch_images          = each.value.prefetch_images
   build_args               = each.value.build_args
   manifest_file_path       = each.value.manifest_file_path
   github_token_secret_name = try(coalesce(each.value.github_token_secret_name, var.global_github_token_secret_name), var.global_github_token_secret_name)
+  build_image              = coalesce(each.value.build_image, "aws/codebuild/amazonlinux2-x86_64-standard:5.0")
+  extra_stages             = each.value.extra_stages != null ? each.value.extra_stages : []
+  build_namespace          = each.value.build_namespace
+  exported_variables       = each.value.exported_variables
+  custom_pre_build_commands  = each.value.custom_pre_build_commands
+  custom_build_commands      = each.value.custom_build_commands
+  custom_post_build_commands = each.value.custom_post_build_commands
   tags                     = each.value.tags
 
   depends_on = [module.ecr]
+}
+
+# -------------------------------------------------------------------
+# Production Promotion CodeBuild Project
+# Shared by all pipelines to promote images from staging to production
+# -------------------------------------------------------------------
+
+resource "aws_iam_role" "promotion_role" {
+  name = "codebuild-prod-build-promotion-service-role"
+  path = "/service-role/"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "codebuild.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "promotion_ecr" {
+  role       = aws_iam_role.promotion_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "promotion_secrets" {
+  role       = aws_iam_role.promotion_role.name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+}
+
+resource "aws_iam_role_policy_attachment" "promotion_s3" {
+  role       = aws_iam_role.promotion_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
+resource "aws_iam_policy" "promotion_assume_role" {
+  name = "ProdECRPushAssumeRole"
+  path = "/"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowAssumeProdECRPushRole"
+        Action   = "sts:AssumeRole"
+        Effect   = "Allow"
+        Resource = "arn:aws:iam::857277800188:role/ProdECRPushRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "promotion_assume_role" {
+  role       = aws_iam_role.promotion_role.name
+  policy_arn = aws_iam_policy.promotion_assume_role.arn
+}
+
+resource "aws_iam_policy" "promotion_base" {
+  name        = "CodeBuildBasePolicy-prod-build-promotion-ap-south-1"
+  path        = "/service-role/"
+  description = "Policy used in trust relationship with CodeBuild"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketAcl", "s3:GetBucketLocation"]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action   = ["codebuild:CreateReportGroup", "codebuild:CreateReport", "codebuild:UpdateReport", "codebuild:BatchPutTestCases", "codebuild:BatchPutCodeCoverages"]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "promotion_base" {
+  role       = aws_iam_role.promotion_role.name
+  policy_arn = aws_iam_policy.promotion_base.arn
+}
+
+resource "aws_codebuild_project" "promotion" {
+  name          = "prod-build-promotion"
+  description   = "Promotes Docker images from staging to production and updates production manifests"
+  build_timeout = 60
+  service_role  = aws_iam_role.promotion_role.arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type                = "BUILD_GENERAL1_SMALL"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type                        = "LINUX_CONTAINER"
+    image_pull_credentials_type = "CODEBUILD"
+    privileged_mode             = true
+
+    environment_variable {
+      name  = "SERVICE_NAME"
+      value = "coworking-platform-fe"
+    }
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = file("${path.module}/buildspec_promotion.yml")
+  }
+
+  tags = {
+    Environment = "stage"
+    Project     = "lawyered"
+    Service     = "promotion"
+  }
 }
 
 # -------------------------------------------------------------------

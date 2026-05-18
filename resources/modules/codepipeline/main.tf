@@ -127,6 +127,8 @@ resource "aws_iam_role_policy" "build" {
 # -------------------------------------------------------------------
 # CodeBuild Project
 # -------------------------------------------------------------------
+data "aws_region" "current" {}
+
 resource "aws_codebuild_project" "this" {
   name         = "${var.pipeline_name}-build"
   description  = "Docker build project for ${var.pipeline_name}"
@@ -138,7 +140,7 @@ resource "aws_codebuild_project" "this" {
 
   environment {
     compute_type    = "BUILD_GENERAL1_SMALL"
-    image           = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    image           = var.build_image
     type            = "LINUX_CONTAINER"
     privileged_mode = true # Required for Docker builds
 
@@ -156,60 +158,75 @@ resource "aws_codebuild_project" "this" {
       name  = "FORCE_UPDATE"
       value = "20260430-V2"
     }
+
+    dynamic "environment_variable" {
+      for_each = var.build_args
+      content {
+        name  = environment_variable.key
+        value = environment_variable.value
+      }
+    }
   }
 
   source {
     type = "CODEPIPELINE"
-    buildspec = yamlencode({
-      version = 0.2
-      phases = {
-        pre_build = {
-          commands = [
-            "echo Logging in to Amazon ECR...",
-            "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL",
-            "echo Pre-fetching images from ECR Public to avoid Docker Hub rate limits...",
-            "for image in ${join(" ", var.prefetch_images)}; do echo Pulling $${image}...; docker pull public.ecr.aws/docker/library/$${image}; docker tag public.ecr.aws/docker/library/$${image} $${image}; done",
-            "REPOS_URL=$ECR_REPOSITORY_URL",
-            "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)",
-            "IMAGE_TAG=$${COMMIT_HASH:=latest}"
-          ]
+    buildspec = yamlencode(merge(
+      {
+        version = 0.2
+        phases = {
+          pre_build = {
+            commands = var.custom_pre_build_commands != null ? var.custom_pre_build_commands : [
+              "echo Logging in to Amazon ECR...",
+              "aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${var.ecr_repository_url}",
+              "echo Pre-fetching images from ECR Public to avoid Docker Hub rate limits...",
+              "for image in ${join(" ", var.prefetch_images)}; do echo Pulling $${image}...; docker pull public.ecr.aws/docker/library/$${image}; docker tag public.ecr.aws/docker/library/$${image} $${image}; done",
+              "REPOS_URL=${var.ecr_repository_url}",
+              "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)",
+              "IMAGE_TAG=$${COMMIT_HASH:=latest}"
+            ]
+          }
+          build = {
+            commands = var.custom_build_commands != null ? var.custom_build_commands : [
+              "echo Build started on `date`",
+              "echo Building the Docker image...",
+              "docker build ${join(" ", [for k, v in var.build_args : "--build-arg ${k}=$${${k}}"])} -t $REPOS_URL:latest .",
+              "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+            ]
+          }
+          post_build = {
+            commands = var.custom_post_build_commands != null ? var.custom_post_build_commands : [
+              "echo Build completed on `date`",
+              "echo Pushing the Docker images...",
+              "docker push $REPOS_URL:latest",
+              "docker push $REPOS_URL:$IMAGE_TAG",
+              "echo Writing image definitions file...",
+              "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+              "echo Setting up SSH key for manifest repo push...",
+              "mkdir -p ~/.ssh",
+              "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+              "chmod 600 ~/.ssh/id_rsa",
+              "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+              "echo Cloning k8s-manifest repo...",
+              "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+              "cd /tmp/k8s-manifest && git checkout ${var.manifest_branch}",
+              "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
+              "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+              "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
+              "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m '[Devops Team Auto Updated] $(basename $REPOS_URL) image to $IMAGE_TAG [skip ci]')",
+              "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
+            ]
+          }
         }
-        build = {
-          commands = [
-            "echo Build started on `date`",
-            "echo Building the Docker image...",
-            "docker build ${join(" ", [for k, v in var.build_args : "--build-arg ${k}=\"${v}\""])} -t $REPOS_URL:latest .",
-            "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
-          ]
+        artifacts = {
+          files = ["imagedefinitions.json"]
         }
-        post_build = {
-          commands = [
-            "echo Build completed on `date`",
-            "echo Pushing the Docker images...",
-            "docker push $REPOS_URL:latest",
-            "docker push $REPOS_URL:$IMAGE_TAG",
-            "echo Writing image definitions file...",
-            "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-            "echo Setting up SSH key for manifest repo push...",
-            "mkdir -p ~/.ssh",
-            "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
-            "chmod 600 ~/.ssh/id_rsa",
-            "ssh-keyscan github.com >> ~/.ssh/known_hosts",
-            "echo Cloning k8s-manifest repo...",
-            "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
-            "cd /tmp/k8s-manifest && git checkout staging",
-            "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
-            "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
-            "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
-            "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m '[Devops Team Auto Updated] $(basename $REPOS_URL) image to $IMAGE_TAG [skip ci]')",
-            "cd /tmp/k8s-manifest && git push origin staging"
-          ]
+      },
+      length(var.exported_variables) > 0 ? {
+        env = {
+          "exported-variables" = var.exported_variables
         }
-      }
-      artifacts = {
-        files = ["imagedefinitions.json"]
-      }
-    })
+      } : {}
+    ))
   }
 
   tags = var.tags
@@ -241,6 +258,7 @@ resource "aws_codepipeline" "this" {
         ConnectionArn    = var.github_connection_arn
         FullRepositoryId = var.repository_id
         BranchName       = var.branch_name
+        OutputArtifactFormat = "CODE_ZIP"
       }
     }
   }
@@ -255,9 +273,32 @@ resource "aws_codepipeline" "this" {
       input_artifacts  = ["source_output"]
       output_artifacts = ["build_output"]
       version          = "1"
+      namespace        = var.build_namespace
 
       configuration = {
         ProjectName = aws_codebuild_project.this.name
+      }
+    }
+  }
+
+  dynamic "stage" {
+    for_each = var.extra_stages
+    content {
+      name = stage.value.name
+      dynamic "action" {
+        for_each = stage.value.action
+        content {
+          name             = action.value.name
+          category         = action.value.category
+          owner            = action.value.owner
+          provider         = action.value.provider
+          version          = action.value.version
+          input_artifacts  = action.value.input_artifacts
+          output_artifacts = action.value.output_artifacts
+          configuration    = action.value.configuration
+          role_arn         = action.value.role_arn
+          namespace        = action.value.namespace
+        }
       }
     }
   }

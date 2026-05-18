@@ -291,11 +291,15 @@ ecr_repositories = {
 # -------------------------------------------------------------------
 aurora_clusters = {
   lawyered-database = {
-    database_name   = "lawyered_db" # DB name cannot contain hyphens in some engines, using underscore
-    master_username = "admin"
-    vpc_key         = "stg-mb-vpc01"
-    subnet_keys     = ["stg-mb-database-subnet01", "stg-mb-database-subnet02", "stg-mb-database-subnet03"]
-    preferred_az    = "ap-south-1a"
+    database_name           = "lawyered_db"
+    master_username         = "admin"
+    vpc_key                 = "stg-mb-vpc01"
+    subnet_keys             = ["stg-mb-public-subnet01", "stg-mb-public-subnet02"]
+    preferred_az            = "ap-south-1a"
+    backup_retention_period = 7
+    deletion_protection     = true
+    skip_final_snapshot     = true
+    db_subnet_group_name    = "lawyered-database-pub-subnet-group"
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -309,77 +313,68 @@ aurora_clusters = {
 # -------------------------------------------------------------------
 rds_instances = {
   core-uat-db = {
-    engine                = "postgres"
-    engine_version        = "18.3" # Upgraded to PostgreSQL 18 as requested
-    instance_class        = "db.t4g.medium"
-    allocated_storage     = 30
-    max_allocated_storage = 500
-    db_name               = "core_uat_db"
-    username              = "dbadmin"
-    password              = "SecureTempPassword123!" # Changed to remove forbidden characters
-    vpc_key               = "stg-mb-vpc01"
-    subnet_keys           = ["stg-mb-database-subnet01", "stg-mb-database-subnet02", "stg-mb-database-subnet03"]
-    multi_az              = false
-    skip_final_snapshot   = true
-    parameter_group_name  = "core-uat-db-pg"
-    parameter_group_family = "postgres18"
+    engine                      = "postgres"
+    engine_version              = "18.3"
+    instance_class              = "db.t4g.medium"
+    allocated_storage           = 30
+    max_allocated_storage       = 500
+    db_name                     = "core_uat_db"
+    username                    = "dbadmin"
+    password                    = "SecureTempPassword123!"
+    vpc_key                     = "stg-mb-vpc01"
+    subnet_keys                 = ["stg-mb-public-subnet01", "stg-mb-public-subnet02"]
+    backup_retention_period     = 7
+    deletion_protection         = true
+    publicly_accessible         = true
+    db_subnet_group_name        = "core-uat-db-pub-subnet-group"
     allow_major_version_upgrade = true
     tags = {
       Environment = "uat"
       Project     = "core"
-      Role        = "database-rds"
     }
   }
 
-  # -------------------------------------------------------------------
-  # New PostgreSQL RDS for Staging: finvica
-  # Configured with storage autoscaling and db.t4g.medium instance class
-  # -------------------------------------------------------------------
   finvica = {
-    engine                 = "postgres"
-    engine_version         = "18.3"                     # Updated to exact version string supported by the API (18.3)
-    instance_class         = "db.t4g.medium"            # Standard burstable instance for staging workloads
-    allocated_storage      = 30                         # Initial storage size in GB
-    max_allocated_storage  = 100                        # Set to 100 GB as a safe autoscaling limit
-    db_name                = "finvica"                  # Initial database name created on startup
-    username               = "dbadmin"                  # Master username (changed from 'admin' as it is reserved)
-    password               = "F1nvic4-Stg-2026-S3cur3#" # Complex password for finvica
-    vpc_key                = "stg-mb-vpc01"             # VPC where the database will reside
-    subnet_keys            = ["stg-mb-database-subnet01", "stg-mb-database-subnet02", "stg-mb-database-subnet03"]
-    multi_az               = false                        # Single AZ deployment for cost optimization in staging
-    skip_final_snapshot    = true                         # Skip snapshot on destruction to speed up cleanup in staging
-    parameter_group_name   = "finvica-db-parameter-group" # Custom parameter group name as requested
-    parameter_group_family = "postgres18"                 # Family for PostgreSQL 18
+    engine                      = "postgres"
+    engine_version              = "18.3"
+    instance_class              = "db.t4g.medium"
+    allocated_storage           = 30
+    max_allocated_storage       = 100
+    db_name                     = "finvica"
+    username                    = "dbadmin"
+    password                    = "F1nvic4-Stg-2026-S3cur3#"
+    vpc_key                     = "stg-mb-vpc01"
+    subnet_keys                 = ["stg-mb-public-subnet01", "stg-mb-public-subnet02"]
+    backup_retention_period     = 7
+    deletion_protection         = true
+    publicly_accessible         = true
+    db_subnet_group_name        = "finvica-pub-subnet-group"
+    allow_major_version_upgrade = true
     tags = {
       Environment = "staging"
       Project     = "finvica"
-      Role        = "database-rds"
     }
   }
 
-  # -------------------------------------------------------------------
-  # New PostgreSQL RDS: lawyered-backend-new
-  # Clone of finvica configuration with 50 GB storage
-  # -------------------------------------------------------------------
   lawyered-backend-new = {
-    engine                 = "postgres"
-    engine_version         = "18.3"
-    instance_class         = "db.t4g.medium"
-    allocated_storage      = 50
-    max_allocated_storage  = 100
-    db_name                = "lawyered_backend_new"
-    username               = "dbadmin"
-    password               = "Lawyered-Backend-2026-Secure#91^" # Complex password for lawyered-backend-new
-    vpc_key                = "stg-mb-vpc01"
-    subnet_keys            = ["stg-mb-database-subnet01", "stg-mb-database-subnet02", "stg-mb-database-subnet03"]
-    multi_az               = false
-    skip_final_snapshot    = true
-    parameter_group_name   = "lawyered-backend-new-db-parameter-group"
-    parameter_group_family = "postgres18"
+    engine                      = "postgres"
+    engine_version              = "18.3"
+    instance_class              = "db.t4g.medium"
+    allocated_storage           = 30
+    max_allocated_storage       = 100
+    db_name                     = "lawyered_backend_new"
+    username                    = "dbadmin"
+    password                    = "Lawyered-Backend-2026-Secure#91^"
+    vpc_key                     = "stg-mb-vpc01"
+    subnet_keys                 = ["stg-mb-public-subnet01", "stg-mb-public-subnet02"]
+    backup_retention_period     = 7
+    deletion_protection         = true
+    publicly_accessible         = true
+    db_subnet_group_name        = "lawyered-backend-new-pub-subnet-group"
+    allow_major_version_upgrade = true
     tags = {
       Environment = "staging"
       Project     = "lawyered"
-      Role        = "database-rds"
     }
   }
 }
@@ -389,15 +384,49 @@ github_connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connect
 codepipelines = {
   admin-lawyered-fe = {
     repository_id      = "Lawyered-in/admin-lawyered-fe"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "admin-lawyered-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-admin-lawyered-fe"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
     build_args = {
       VITE_API_URL          = "https://api-staging.lawyered.in"
       VITE_ENV              = "production"
       VITE_ENABLE_TELEMETRY = "false"
     }
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"admin-lawyered-fe\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -406,10 +435,57 @@ codepipelines = {
   }
   admin-lawyered = {
     repository_id      = "Lawyered-in/admin-lawyered"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "admin-lawyered"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-admin-lawyered"
+    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    build_args = {
+      DATABASE_URL = "mysql://admin:E7mshc5M7L3fkAVPc2<5qRT6o6i2@lawyered-database.cluster-cj446ammul0i.ap-south-1.rds.amazonaws.com:3306/proddblawyered"
+    }
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Using DATABASE_URL from environment variables...",
+      "npm install",
+      "echo Installing dependencies...",
+      "npm run generate",
+      "echo Building the Docker image...",
+      "docker build -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"admin-lawyered\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -418,13 +494,47 @@ codepipelines = {
   }
   lawyered-in-website = {
     repository_id      = "Lawyered-in/lawyered.in-website"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "lawyered-in-website"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-lawyered-in-website"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/lawyered-website-assets"
     }
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"lawyered-in-website\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -433,10 +543,44 @@ codepipelines = {
   }
   partners-portal-fe = {
     repository_id      = "Lawyered-in/partners-portal-fe"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "partners-portal-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-partners-portal-fe"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"partners-portal-fe\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -445,13 +589,47 @@ codepipelines = {
   }
   challanpay-fe-next = {
     repository_id      = "Lawyered-in/challanpay-fe-next"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "challanpay-fe-next"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-challanpay-fe-next"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/challanpay-website-assets"
     }
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"challanpay-fe-next\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -460,10 +638,44 @@ codepipelines = {
   }
   api-challans = {
     repository_id      = "Lawyered-in/api-challans"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "api-challans"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-api-challans"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"api-challans\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -472,10 +684,44 @@ codepipelines = {
   }
   qr-api = {
     repository_id      = "Lawyered-in/qr-api"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "qr-api"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-qr-api"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"qr-api\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -492,11 +738,45 @@ codepipelines = {
   # ------------------------------------------------------------------
   core-platform-be = {
     repository_id      = "india-accelerator/core-platform-be" # Full GitHub org/repo path
-    branch_name        = "development-branch"                 # Correct branch for core
+    branch_name        = "Deployment-production"                 # Dedicated deployment branch
     ecr_key            = "core-platform-be"                   # References ecr_repositories key above
     prefetch_images    = ["node:22-alpine"]                   # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-core-platform-be"   # Path in k8s-manifest repo to update
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"core-platform-be\"}]"
+            }
+          }
+        ]
+      }
+    ]
+    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -513,11 +793,49 @@ codepipelines = {
   # ------------------------------------------------------------------
   core-platform-fe = {
     repository_id      = "india-accelerator/core-platform-fe" # Full GitHub org/repo path
-    branch_name        = "development-branch"                 # Correct branch for core
+    branch_name        = "production"                 # Dedicated deployment branch
     ecr_key            = "core-platform-fe"                   # References ecr_repositories key above
     prefetch_images    = ["node:22-bullseye"]                 # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-core-platform-fe"   # Path in k8s-manifest repo to update
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"core-platform-fe\"}]"
+            }
+          }
+        ]
+      }
+    ]
+    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
+    build_image    = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_args = {
+      VITE_API_URL = "https://core-platform-be-dev.indiaaccelerator.co/api"
+    }
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -534,11 +852,60 @@ codepipelines = {
   # ------------------------------------------------------------------
   coworking-platform-be = {
     repository_id      = "IA-COW/coworking-platform-be"          # Full GitHub org/repo path
-    branch_name        = "develop"                               # Using develop branch
+    branch_name        = "main"                                  # Developer push branch
     ecr_key            = "coworking-platform-be"                 # References ecr_repositories key above
     prefetch_images    = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-coworking-platform-be" # Path in k8s-manifest repo to update
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/2d23ed7b-a5f6-4e52-ac83-049adcf66c2a"
+    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    build_args = {
+      DB_DATABASE = "cow_dev_db"
+      DB_USERNAME = "dbadmin"
+      DB_HOST     = "core-uat-db.cj446ammul0i.ap-south-1.rds.amazonaws.com"
+      DB_PASSWORD = "SecureTempPassword123!"
+      DB_PORT     = "5432"
+      PGSSLMODE   = "require"
+    }
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "npm install",
+      "echo Building the Docker image...",
+      "docker build  -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"coworking-platform-be\"}]"
+            }
+          }
+        ]
+      }
+    ]
+    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/5fb5e82a-dcb4-4f0b-b5e5-10ab4496e9af"
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -555,11 +922,49 @@ codepipelines = {
   # ------------------------------------------------------------------
   coworking-platform-fe = {
     repository_id      = "IA-COW/coworking-platform-fe"          # Full GitHub org/repo path
-    branch_name        = "develop"                               # Using develop branch
+    branch_name        = "main"                                  # Developer push branch
     ecr_key            = "coworking-platform-fe"                 # References ecr_repositories key above
     prefetch_images    = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-coworking-platform-fe" # Path in k8s-manifest repo to update
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/2d23ed7b-a5f6-4e52-ac83-049adcf66c2a"
+    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/5fb5e82a-dcb4-4f0b-b5e5-10ab4496e9af"
+    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    build_args = {
+      API_URL             = "https://cow-dev-be.indiaaccelerator.co/api"
+      NEXT_PUBLIC_API_URL = "https://cow-dev-be.indiaaccelerator.co/api"
+    }
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"coworking-platform-fe\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -573,11 +978,45 @@ codepipelines = {
   # ------------------------------------------------------------------
   prosper-be = {
     repository_id      = "prosper-wealth/prosper-be"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "prosper-be"
     prefetch_images    = ["node:22-alpine"]
     manifest_file_path = "deployments/stg-prosper-be"
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"prosper-be\"}]"
+            }
+          }
+        ]
+      }
+    ]
+    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     tags = {
       Environment = "stage"
       Project     = "prosper-wealth"
@@ -592,11 +1031,48 @@ codepipelines = {
   # ------------------------------------------------------------------
   prosper-fe = {
     repository_id      = "prosper-wealth/prosper-fe"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "prosper-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-prosper-fe"
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"prosper-fe\"}]"
+            }
+          }
+        ]
+      }
+    ]
+    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    build_args = {
+      VITE_API_URL = "https://staging-api.finvica.com/api/v1"
+    }
     tags = {
       Environment = "stage"
       Project     = "prosper-wealth"
@@ -612,10 +1088,44 @@ codepipelines = {
   # ------------------------------------------------------------------
   subscriber-fe = {
     repository_id      = "Lawyered-in/subscriber-fe"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "subscriber-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-subscriber-fe"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"subscriber-fe\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -631,10 +1141,44 @@ codepipelines = {
   # ------------------------------------------------------------------
   lawyered-be = {
     repository_id      = "Lawyered-in/lawyered-be"
-    branch_name        = "staging"
+    branch_name        = "main"
     ecr_key            = "lawyered-be"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-lawyered-be"
+    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace    = "StagingBuildNamespace"
+    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    extra_stages = [
+      {
+        name = "ApproveForProduction"
+        action = [
+          {
+            name     = "ManualApproval"
+            category = "Approval"
+            owner    = "AWS"
+            provider = "Manual"
+            version  = "1"
+          }
+        ]
+      },
+      {
+        name = "PromoteToProduction"
+        action = [
+          {
+            name            = "ProdPromotion"
+            category        = "Build"
+            owner           = "AWS"
+            provider        = "CodeBuild"
+            version         = "1"
+            input_artifacts = ["source_output"]
+            configuration = {
+              ProjectName          = "prod-build-promotion"
+              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"lawyered-be\"}]"
+            }
+          }
+        ]
+      }
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
