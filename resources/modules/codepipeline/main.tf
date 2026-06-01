@@ -212,7 +212,7 @@ resource "aws_codebuild_project" "this" {
               "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
               "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
               "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
-              "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m '[Devops Team Auto Updated] $(basename $REPOS_URL) image to $IMAGE_TAG [skip ci]')",
+              "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
               "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
             ]
           }
@@ -255,9 +255,9 @@ resource "aws_codepipeline" "this" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        ConnectionArn    = var.github_connection_arn
-        FullRepositoryId = var.repository_id
-        BranchName       = var.branch_name
+        ConnectionArn        = var.github_connection_arn
+        FullRepositoryId     = var.repository_id
+        BranchName           = var.branch_name
         OutputArtifactFormat = "CODE_ZIP"
       }
     }

@@ -1,0 +1,62 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-core-platform-be
+  namespace: stg
+  labels:
+    app: stg-core-platform-be
+    component: api
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-core-platform-be
+      component: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-core-platform-be
+        component: api
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stg-core-platform-be-api
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/core-platform-be:a4f0bef
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3333
+          envFrom:
+            - secretRef:
+                name: core-platform-be-secret
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+
+        - name: worker
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/core-platform-be:a4f0bef
+          imagePullPolicy: Always
+          command: ["node", "dist/src/worker.js"]
+          envFrom:
+            - secretRef:
+                name: core-platform-be-secret
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"

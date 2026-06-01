@@ -368,6 +368,122 @@ resource "aws_secretsmanager_secret_version" "rds_secrets" {
 }
 
 # -------------------------------------------------------------------
+# Production Application Secrets Management
+# Creates Secrets Manager resources for all 5 production microservices
+# -------------------------------------------------------------------
+
+locals {
+  prod_apps = [
+    "core-platform-be",
+    "coworking-platform-be",
+    "prosper-be",
+    "admin-lawyered",
+    "lawyered-be"
+  ]
+}
+
+# 1. Create the Secret containers in Secrets Manager under the prod/ prefix
+resource "aws_secretsmanager_secret" "prod_app_secrets" {
+  for_each                = toset(local.prod_apps)
+  name                    = "prod/${each.key}"
+  description             = "Production credentials and configurations for ${each.key}"
+  recovery_window_in_days = 0
+
+  tags = {
+    Environment = "prod"
+    Project     = "lawyered"
+    ManagedBy   = "terraform"
+  }
+}
+
+# 2. Store the actual JSON payload loaded from local file to the Secret Version
+resource "aws_secretsmanager_secret_version" "prod_app_secrets" {
+  for_each      = aws_secretsmanager_secret.prod_app_secrets
+  secret_id     = each.value.id
+  secret_string = file("${path.module}/secrets/${each.key}.json")
+}
+
+# -------------------------------------------------------------------
+# External Secrets Operator (ESO) Production Setup
+# -------------------------------------------------------------------
+
+# 1. Kubernetes Namespace 'prod'
+resource "kubernetes_namespace" "prod" {
+  metadata {
+    name = "prod"
+    labels = {
+      environment = "prod"
+    }
+  }
+}
+
+# 2. IAM Policy for ESO to access Production Secrets in Secrets Manager
+resource "aws_iam_policy" "eso_prod_policy" {
+  name        = "ESOProdSecretsPolicy"
+  description = "Allows EKS External Secrets Operator to access production secrets"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:ap-south-1:344367180480:secret:prod/*"
+      }
+    ]
+  })
+}
+
+# 3. IAM Role for ESO with OIDC trust relationship
+locals {
+  eks_cluster_key = "eks-cluster-np"
+  prod_oidc_id    = replace(module.eks[local.eks_cluster_key].oidc_provider_url, "https://", "")
+}
+
+resource "aws_iam_role" "eso_prod_role" {
+  name = "ESOProdSharedRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = module.eks[local.eks_cluster_key].oidc_provider_arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "${local.prod_oidc_id}:sub" : "system:serviceaccount:prod:eso-prod-shared",
+            "${local.prod_oidc_id}:aud" : "sts.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# 4. Attach Policy to IAM Role
+resource "aws_iam_role_policy_attachment" "eso_prod_attach" {
+  role       = aws_iam_role.eso_prod_role.name
+  policy_arn = aws_iam_policy.eso_prod_policy.arn
+}
+
+# 5. Kubernetes ServiceAccount for ESO in the 'prod' namespace
+resource "kubernetes_service_account" "eso_prod_sa" {
+  metadata {
+    name      = "eso-prod-shared"
+    namespace = kubernetes_namespace.prod.metadata[0].name
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.eso_prod_role.arn
+    }
+  }
+}
+
+# -------------------------------------------------------------------
 # CodePipeline Module — for_each over var.codepipelines
 # -------------------------------------------------------------------
 module "codepipeline" {
@@ -709,5 +825,23 @@ resource "kubernetes_manifest" "argocd_ingress" {
 }
 
 # -------------------------------------------------------------------
+# AWS Bedrock Service Integration (MiniMax M2.5 Model)
+# -------------------------------------------------------------------
+module "bedrock" {
+  source          = "../modules/bedrock"
+  environment     = "stage"
+  aws_region      = var.aws_region
+  model_id        = var.bedrock_model_id
+  create_iam_user = var.create_bedrock_iam_user
+
+  tags = {
+    Environment = "stage"
+    Project     = "lawyered"
+    Service     = "deepsec"
+  }
+}
+
+# -------------------------------------------------------------------
 # End of Resources
 # -------------------------------------------------------------------
+

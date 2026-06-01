@@ -14,6 +14,8 @@
 | 2 | 2026-04-27 | CI/CD Detailed Flow — lawyered.in-website | [cicd_flow_lawyered_fe.md](./cicd_flow_lawyered_fe.md) | ✅ Verified |
 | 3 | 2026-04-27 | How GitHub Connection Works | [How GitHub Connection Works.txt](./How%20GitHub%20Connection%20Works.txt) | 📖 Reference Doc |
 | 4 | 2026-04-27 | How AWS Gets GitHub Access (OAuth Flow) | [How AWS Gets GitHub Access.txt](./How%20AWS%20Gets%20GitHub%20Access.txt) | 📖 Reference Doc |
+| 5 | 2026-05-20 | A-Z Observability & Networking Blueprint | [AZ-Observability-Networking-Blueprint.md](./AZ-Observability-Networking-Blueprint.md) | 📖 Reference Doc |
+| 6 | 2026-05-20 | 100 EKS & DevOps Study Guide Q&As | [100-EKS-AWS-DevOps-QAs.md](./100-EKS-AWS-DevOps-QAs.md) | 📖 Reference Doc |
 
 ---
 

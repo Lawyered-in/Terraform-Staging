@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stg-admin-lawyered-uploads-pvc
+  namespace: stg
+  labels:
+    app: stg-admin-lawyered
+    environment: stg
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stg-admin-lawyered-puppeteer-cache-pvc
+  namespace: stg
+  labels:
+    app: stg-admin-lawyered
+    environment: stg
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 2Gi

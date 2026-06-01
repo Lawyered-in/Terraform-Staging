@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: storageclass
+  namespace: argo-cd
+  labels:
+    app: storageclass
+    tier: infrastructure
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Lawyered-in/k8s-manifest.git
+    targetRevision: staging
+    path: storageclass
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - Replace=true
+  revisionHistoryLimit: 3

@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prosper-be-migrate-fe57b1e
+  namespace: stg
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-options: ServerSideApply=false
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-migrate
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/prosper-be:fe57b1e
+          command: ["node", "dist/scripts/migrate.js"]
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://dbadmin:F1nvic4-Stg-2026-S3cur3%23@finvica.cj446ammul0i.ap-south-1.rds.amazonaws.com:5432/finvica"
+            - name: DB_HOST
+              value: "finvica.cj446ammul0i.ap-south-1.rds.amazonaws.com"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USERNAME
+              value: "dbadmin"
+            - name: DB_PASSWORD
+              value: "F1nvic4-Stg-2026-S3cur3#"
+            - name: DB_DATABASE
+              value: "finvica"
+            - name: DB_SSL
+              value: "true"
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

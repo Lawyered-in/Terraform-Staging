@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argo-cd
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:344367180480:certificate/98c8d8d0-1e46-4a81-967a-84555529f2c3
+    alb.ingress.kubernetes.io/group.name: laweryerd-np-group
+    alb.ingress.kubernetes.io/group.order: "50"
+    alb.ingress.kubernetes.io/success-codes: "200,301,302,404"
+    alb.ingress.kubernetes.io/load-balancer-name: lawyered-ingress-alb
+spec:
+  rules:
+  - host: argocd-staging.lawyered.in
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: argo-cd-argocd-server
+              port:
+                number: 80

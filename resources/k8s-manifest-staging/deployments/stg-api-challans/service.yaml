@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stg-api-challans
+  namespace: stg
+  labels:
+    app: stg-api-challans
+    environment: stg
+spec:
+  type: ClusterIP
+  selector:
+    app: stg-api-challans
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

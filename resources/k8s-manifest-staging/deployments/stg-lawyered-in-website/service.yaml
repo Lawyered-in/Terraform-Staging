@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stg-lawyered-in-website
+  namespace: stg
+  labels:
+    app: stg-lawyered-in-website
+    environment: stg
+spec:
+  type: ClusterIP
+  selector:
+    app: stg-lawyered-in-website
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 5001

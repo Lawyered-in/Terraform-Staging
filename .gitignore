@@ -11,3 +11,22 @@ crash.*.log
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ignore local secret/scratch files
+scratch/
+resources/templates/secrets/
+
+# Ignore implementation plans, tasks, and walkthroughs
+walkthrough.md
+secrets-flow-plan.md
+implementation_plan.md
+task.md
+
+# Ignore temp plans, text files, and states in templates
+resources/templates/*.txt
+resources/templates/*.json
+resources/templates/state.json
+resources/templates/tfplan*
+resources/templates/keys/
+*.pem
+

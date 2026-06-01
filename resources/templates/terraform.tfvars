@@ -384,7 +384,7 @@ github_connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connect
 codepipelines = {
   admin-lawyered-fe = {
     repository_id      = "Lawyered-in/admin-lawyered-fe"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "admin-lawyered-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-admin-lawyered-fe"
@@ -396,37 +396,6 @@ codepipelines = {
       VITE_ENV              = "production"
       VITE_ENABLE_TELEMETRY = "false"
     }
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"admin-lawyered-fe\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -435,7 +404,7 @@ codepipelines = {
   }
   admin-lawyered = {
     repository_id      = "Lawyered-in/admin-lawyered"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "admin-lawyered"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-admin-lawyered"
@@ -455,36 +424,28 @@ codepipelines = {
       "docker build -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"admin-lawyered\"}]"
-            }
-          }
-        ]
-      }
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+      "echo Setting up SSH key for manifest repo push...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-admin-lawyered/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-admin-lawyered/migration-job.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|name: admin-lawyered-migrate-.*|name: admin-lawyered-migrate-$IMAGE_TAG|g\" deployments/stg-admin-lawyered/migration-job.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-admin-lawyered/deployment.yaml deployments/stg-admin-lawyered/migration-job.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
     ]
     tags = {
       Environment = "stage"
@@ -494,7 +455,7 @@ codepipelines = {
   }
   lawyered-in-website = {
     repository_id      = "Lawyered-in/lawyered.in-website"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "lawyered-in-website"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-lawyered-in-website"
@@ -504,37 +465,6 @@ codepipelines = {
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/lawyered-website-assets"
     }
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"lawyered-in-website\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -543,44 +473,13 @@ codepipelines = {
   }
   partners-portal-fe = {
     repository_id      = "Lawyered-in/partners-portal-fe"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "partners-portal-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-partners-portal-fe"
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"partners-portal-fe\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -589,7 +488,7 @@ codepipelines = {
   }
   challanpay-fe-next = {
     repository_id      = "Lawyered-in/challanpay-fe-next"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "challanpay-fe-next"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-challanpay-fe-next"
@@ -599,37 +498,6 @@ codepipelines = {
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/challanpay-website-assets"
     }
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"challanpay-fe-next\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -638,44 +506,13 @@ codepipelines = {
   }
   api-challans = {
     repository_id      = "Lawyered-in/api-challans"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "api-challans"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-api-challans"
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"api-challans\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -684,44 +521,13 @@ codepipelines = {
   }
   qr-api = {
     repository_id      = "Lawyered-in/qr-api"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "qr-api"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-qr-api"
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"qr-api\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -738,45 +544,37 @@ codepipelines = {
   # ------------------------------------------------------------------
   core-platform-be = {
     repository_id      = "india-accelerator/core-platform-be" # Full GitHub org/repo path
-    branch_name        = "Deployment-production"                 # Dedicated deployment branch
+    branch_name        = "development-branch"                 # Dedicated deployment branch
     ecr_key            = "core-platform-be"                   # References ecr_repositories key above
     prefetch_images    = ["node:22-alpine"]                   # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-core-platform-be"   # Path in k8s-manifest repo to update
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"core-platform-be\"}]"
-            }
-          }
-        ]
-      }
+    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+      "echo Setting up SSH key for manifest repo push...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-core-platform-be/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-core-platform-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|name: core-platform-be-migrate-.*|name: core-platform-be-migrate-$IMAGE_TAG|g\" deployments/stg-core-platform-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-core-platform-be/deployment.yaml deployments/stg-core-platform-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
     ]
-    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -793,46 +591,15 @@ codepipelines = {
   # ------------------------------------------------------------------
   core-platform-fe = {
     repository_id      = "india-accelerator/core-platform-fe" # Full GitHub org/repo path
-    branch_name        = "production"                 # Dedicated deployment branch
+    branch_name        = "development-branch"                 # Dedicated deployment branch
     ecr_key            = "core-platform-fe"                   # References ecr_repositories key above
     prefetch_images    = ["node:22-bullseye"]                 # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-core-platform-fe"   # Path in k8s-manifest repo to update
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"core-platform-fe\"}]"
-            }
-          }
-        ]
-      }
-    ]
-    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
-    build_image    = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
+    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
     build_args = {
       VITE_API_URL = "https://core-platform-be-dev.indiaaccelerator.co/api"
     }
@@ -852,7 +619,7 @@ codepipelines = {
   # ------------------------------------------------------------------
   coworking-platform-be = {
     repository_id      = "IA-COW/coworking-platform-be"          # Full GitHub org/repo path
-    branch_name        = "main"                                  # Developer push branch
+    branch_name        = "develop"                               # Developer push branch
     ecr_key            = "coworking-platform-be"                 # References ecr_repositories key above
     prefetch_images    = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-coworking-platform-be" # Path in k8s-manifest repo to update
@@ -874,36 +641,28 @@ codepipelines = {
       "docker build  -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"coworking-platform-be\"}]"
-            }
-          }
-        ]
-      }
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+      "echo Setting up SSH key for manifest repo push...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-coworking-platform-be/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-coworking-platform-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|name: coworking-platform-be-migrate-.*|name: coworking-platform-be-migrate-$IMAGE_TAG|g\" deployments/stg-coworking-platform-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-coworking-platform-be/deployment.yaml deployments/stg-coworking-platform-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
     ]
     connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/5fb5e82a-dcb4-4f0b-b5e5-10ab4496e9af"
     tags = {
@@ -922,7 +681,7 @@ codepipelines = {
   # ------------------------------------------------------------------
   coworking-platform-fe = {
     repository_id      = "IA-COW/coworking-platform-fe"          # Full GitHub org/repo path
-    branch_name        = "main"                                  # Developer push branch
+    branch_name        = "develop"                               # Developer push branch
     ecr_key            = "coworking-platform-fe"                 # References ecr_repositories key above
     prefetch_images    = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
     manifest_file_path = "deployments/stg-coworking-platform-fe" # Path in k8s-manifest repo to update
@@ -934,37 +693,6 @@ codepipelines = {
       API_URL             = "https://cow-dev-be.indiaaccelerator.co/api"
       NEXT_PUBLIC_API_URL = "https://cow-dev-be.indiaaccelerator.co/api"
     }
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"coworking-platform-fe\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -978,45 +706,37 @@ codepipelines = {
   # ------------------------------------------------------------------
   prosper-be = {
     repository_id      = "prosper-wealth/prosper-be"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "prosper-be"
     prefetch_images    = ["node:22-alpine"]
     manifest_file_path = "deployments/stg-prosper-be"
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"prosper-be\"}]"
-            }
-          }
-        ]
-      }
+    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+      "echo Setting up SSH key for manifest repo push...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-prosper-be/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-prosper-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|name: prosper-be-migrate-.*|name: prosper-be-migrate-$IMAGE_TAG|g\" deployments/stg-prosper-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-prosper-be/deployment.yaml deployments/stg-prosper-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
     ]
-    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     tags = {
       Environment = "stage"
       Project     = "prosper-wealth"
@@ -1031,45 +751,14 @@ codepipelines = {
   # ------------------------------------------------------------------
   prosper-fe = {
     repository_id      = "prosper-wealth/prosper-fe"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "prosper-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-prosper-fe"
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"prosper-fe\"}]"
-            }
-          }
-        ]
-      }
-    ]
-    connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     build_args = {
       VITE_API_URL = "https://staging-api.finvica.com/api/v1"
     }
@@ -1088,44 +777,13 @@ codepipelines = {
   # ------------------------------------------------------------------
   subscriber-fe = {
     repository_id      = "Lawyered-in/subscriber-fe"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "subscriber-fe"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-subscriber-fe"
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"subscriber-fe\"}]"
-            }
-          }
-        ]
-      }
-    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -1141,43 +799,35 @@ codepipelines = {
   # ------------------------------------------------------------------
   lawyered-be = {
     repository_id      = "Lawyered-in/lawyered-be"
-    branch_name        = "main"
+    branch_name        = "staging"
     ecr_key            = "lawyered-be"
     prefetch_images    = ["node:20-alpine"]
     manifest_file_path = "deployments/stg-lawyered-be"
     build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
     build_namespace    = "StagingBuildNamespace"
     exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    extra_stages = [
-      {
-        name = "ApproveForProduction"
-        action = [
-          {
-            name     = "ManualApproval"
-            category = "Approval"
-            owner    = "AWS"
-            provider = "Manual"
-            version  = "1"
-          }
-        ]
-      },
-      {
-        name = "PromoteToProduction"
-        action = [
-          {
-            name            = "ProdPromotion"
-            category        = "Build"
-            owner           = "AWS"
-            provider        = "CodeBuild"
-            version         = "1"
-            input_artifacts = ["source_output"]
-            configuration = {
-              ProjectName          = "prod-build-promotion"
-              EnvironmentVariables = "[{\"name\":\"IMAGE_TAG\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.IMAGE_TAG}\"},{\"name\":\"REPOS_URL\",\"type\":\"PLAINTEXT\",\"value\":\"#{StagingBuildNamespace.REPOS_URL}\"},{\"name\":\"SERVICE_NAME\",\"type\":\"PLAINTEXT\",\"value\":\"lawyered-be\"}]"
-            }
-          }
-        ]
-      }
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+      "echo Setting up SSH key for manifest repo push...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-lawyered-be/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-lawyered-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|name: lawyered-be-migrate-.*|name: lawyered-be-migrate-$IMAGE_TAG|g\" deployments/stg-lawyered-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-lawyered-be/deployment.yaml deployments/stg-lawyered-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
     ]
     tags = {
       Environment = "stage"
@@ -1186,3 +836,10 @@ codepipelines = {
     }
   }
 }
+
+# -------------------------------------------------------------------
+# AWS Bedrock Service Configuration
+# -------------------------------------------------------------------
+bedrock_model_id        = "minimax.minimax-m2.5"
+create_bedrock_iam_user = true
+

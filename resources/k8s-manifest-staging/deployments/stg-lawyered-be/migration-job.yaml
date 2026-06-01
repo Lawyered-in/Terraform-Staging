@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lawyered-be-migrate-1302aa9
+  namespace: stg
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-migrate
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/lawyered-be:1302aa9
+          command: ["npx", "prisma", "migrate", "deploy", "&&", "npx", "prisma", "generate"]
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://dbadmin:Lawyered-Backend-2026-Secure%2391%5E@lawyered-backend-new.cj446ammul0i.ap-south-1.rds.amazonaws.com:5432/lawyered_backend_new?sslmode=require"
+            - name: NODE_ENV
+              value: "production"
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1024"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1536Mi"

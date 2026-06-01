@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stg-core-platform-be-redis
+  namespace: argo-cd
+  labels:
+    app: stg-core-platform-be-redis
+    tier: infrastructure
+    environment: stg
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.bitnami.com/bitnami
+      chart: redis
+      targetRevision: "25.4.1"
+      helm:
+        releaseName: stg-core-platform-be-redis
+        valueFiles:
+          - $values/deployments/stg-core-platform-be-redis/values.yaml
+    - repoURL: git@github.com:Lawyered-in/k8s-manifest.git
+      targetRevision: staging
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: redis
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+  revisionHistoryLimit: 3

@@ -252,3 +252,19 @@ variable "codepipelines" {
   description = "Map of CodePipelines to create"
   default     = {}
 }
+
+# -------------------------------------------------------------------
+# AWS Bedrock Service Configuration
+# -------------------------------------------------------------------
+variable "bedrock_model_id" {
+  type        = string
+  description = "The specific AWS Bedrock foundation model identifier to allow in the IAM policy"
+  default     = "minimax.minimax-m2.5"
+}
+
+variable "create_bedrock_iam_user" {
+  type        = bool
+  description = "Set to true to generate a dedicated IAM User with long-term API access credentials"
+  default     = true
+}
+

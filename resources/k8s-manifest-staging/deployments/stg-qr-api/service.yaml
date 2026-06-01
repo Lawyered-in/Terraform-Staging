@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stg-qr-api
+  namespace: stg
+  labels:
+    app: stg-qr-api
+    environment: stg
+spec:
+  type: ClusterIP
+  selector:
+    app: stg-qr-api
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 4002
