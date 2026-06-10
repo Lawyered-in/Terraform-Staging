@@ -1,3 +1,142 @@
+# Instructions: Production DevSecOps Security Scan Rollout
+
+Copy and paste the prompt below directly into the Antigravity AI assistant in the **Production Workspace (`production-iac`)** to automate the rollout of the security scan pipeline for `subscriber-fe`.
+
+---
+
+## 📋 Copy-Paste Prompt for Production AI Assistant
+
+```markdown
+Please configure automated DevSecOps security scanning (Semgrep SAST, Syft SBOM, and Grype SCA) for the `subscriber-fe` pipeline in the production environment. 
+
+Here is the exact implementation detail from staging. Please implement it in this production workspace:
+
+### 1. Update the CodePipeline Module Variables
+In `resources/modules/codepipeline/variables.tf`, add the following variables:
+```elixir
+variable "enable_security_scan" {
+  type        = bool
+  description = "Set to true to enable the optional security scan stage"
+  default     = false
+}
+
+variable "security_scan_role_arn" {
+  type        = string
+  description = "IAM role ARN for the CodeBuild security scan project"
+  default     = null
+}
+
+variable "security_reports_bucket_name" {
+  type        = string
+  description = "S3 bucket name where security scan PDF reports are uploaded"
+  default     = null
+}
+
+variable "security_scan_compute_type" {
+  type        = string
+  description = "Compute resource size for security scan project"
+  default     = "BUILD_GENERAL1_SMALL"
+}
+```
+
+### 2. Update the CodePipeline Module main.tf
+In `resources/modules/codepipeline/main.tf`:
+- Add the `aws_codebuild_project.security_scan` resource:
+```elixir
+resource "aws_codebuild_project" "security_scan" {
+  count        = var.enable_security_scan ? 1 : 0
+  name         = "${var.pipeline_name}-security-scan"
+  description  = "Security scan (Semgrep, Syft, Grype) for ${var.pipeline_name}"
+  service_role = var.security_scan_role_arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type    = var.security_scan_compute_type
+    image           = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type            = "LINUX_CONTAINER"
+    privileged_mode = true
+
+    environment_variable {
+      name  = "PIPELINE_NAME"
+      value = var.pipeline_name
+    }
+
+    environment_variable {
+      name  = "ARTIFACT_BUCKET"
+      value = aws_s3_bucket.artifacts.bucket
+    }
+
+    environment_variable {
+      name  = "SECURITY_REPORTS_BUCKET"
+      value = var.security_reports_bucket_name
+    }
+
+    environment_variable {
+      name  = "GITHUB_TOKEN_SECRET_NAME"
+      value = var.github_token_secret_name
+    }
+
+    environment_variable {
+      name  = "REPOSITORY_ID"
+      value = var.repository_id
+    }
+
+    environment_variable {
+      name  = "BRANCH_NAME"
+      value = var.branch_name
+    }
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = file("${path.module}/buildspec_security_tests.yaml")
+  }
+
+  tags = var.tags
+}
+```
+- Update `aws_codepipeline.this` to insert the dynamic security scan stage between `Build` and `Deploy` (or at the appropriate location):
+```elixir
+  dynamic "stage" {
+    for_each = var.enable_security_scan ? [1] : []
+    content {
+      name = "SecurityScan"
+      action {
+        name             = "SecurityScan"
+        category         = "Build"
+        owner            = "AWS"
+        provider         = "CodeBuild"
+        version          = "1"
+        input_artifacts  = ["source_output"]
+        output_artifacts = ["security_scan_output"]
+
+        configuration = {
+          ProjectName          = aws_codebuild_project.security_scan[0].name
+          PrimarySource        = "source_output"
+          EnvironmentVariables = jsonencode([
+            {
+              name  = "IMAGE_TAG"
+              value = format("#{%s.IMAGE_TAG}", coalesce(var.build_namespace, "BuildVariables"))
+              type  = "PLAINTEXT"
+            },
+            {
+              name  = "REPOS_URL"
+              value = format("#{%s.REPOS_URL}", coalesce(var.build_namespace, "BuildVariables"))
+              type  = "PLAINTEXT"
+            }
+          ])
+        }
+      }
+    }
+  }
+```
+
+### 3. Create the buildspec_security_tests.yaml File
+Create `resources/modules/codepipeline/buildspec_security_tests.yaml` with the following contents:
+```yaml
 version: 0.2
 
 phases:
@@ -402,8 +541,13 @@ phases:
           HIGH_COUNT=0
           MED_COUNT=0
           LOW_COUNT=0
+          S_TOT=0
+          G_TOT=0
         fi
       - |
+        HIGH_COUNT=$(($S_HIGH + $G_HIGH))
+        MED_COUNT=$(($S_MED + $G_MED))
+        LOW_COUNT=$(($S_LOW + $G_LOW))
         if [ "$HIGH_COUNT" -eq 0 ]; then
           SECURITY_MESSAGE="✅ You're Secure"
         else
@@ -415,8 +559,188 @@ phases:
         if [ ! -z "$SLACK_WEBHOOK_URL" ] && [ "$SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
           echo "Sending scan status alert to Slack..."
           curl -X POST -H 'Content-type: application/json' --data "{
-            \"text\": \"🛡️ *Security Pipeline Results:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)\\n--------------------------------------------------\\n*🔑 Security Gates:*\\n  ✅ SAST Scan (Semgrep) completed -- <${SEMGREP_LINK}|Download Semgrep Report>\\n  ✅ Dependency Scan (Grype) completed -- <${GRYPE_LINK}|Download Grype Report>\\n  ✅ SBOM Generation (Syft) completed -- <${SBOM_LINK}|Download SBOM>\\n\\n*📈 Results:* ${SECURITY_MESSAGE}\\n  🔴 High: \`${HIGH_COUNT}\`  |  🟡 Medium: \`${MED_COUNT}\`  |  🟢 Low: \`${LOW_COUNT}\`\\n\\n*🔗 Artifacts:*\\n  📄 Consolidated Report: <${PDF_LINK}|Download PDF>\\n  📂 S3 Directory: <https://s3.console.aws.amazon.com/s3/buckets/${SECURITY_REPORTS_BUCKET}?prefix=${SCAN_FOLDER}/|View S3 Folder>\"
+            \"text\": \"🛡️ *[PROD] Security Pipeline Results:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)\\n--------------------------------------------------\\n*🔑 Security Gates:*\\n  ✅ SAST Scan (Semgrep) completed -- <${SEMGREP_LINK}|Download Semgrep Report>\\n  ✅ Dependency Scan (Grype) completed -- <${GRYPE_LINK}|Download Grype Report>\\n  ✅ SBOM Generation (Syft) completed -- <${SBOM_LINK}|Download SBOM>\\n\\n*📈 Results:* ${SECURITY_MESSAGE}\\n  🔴 High: \`${HIGH_COUNT}\`  |  🟡 Medium: \`${MED_COUNT}\`  |  🟢 Low: \`${LOW_COUNT}\`\\n\\n*🔗 Artifacts:*\\n  📄 Consolidated Report: <${PDF_LINK}|Download PDF>\\n  📂 S3 Directory: <https://s3.console.aws.amazon.com/s3/buckets/${SECURITY_REPORTS_BUCKET}?prefix=${SCAN_FOLDER}/|View S3 Folder>\"
           }" "$SLACK_WEBHOOK_URL"
         else
           echo "Slack Webhook URL is empty or placeholder, skipping notification."
         fi
+```
+
+### 4. Update the Root templates variables.tf Schema
+In `resources/templates/variables.tf`, update the `codepipelines` schema map inside variables to support the new security scan properties:
+```elixir
+    enable_security_scan       = optional(bool, false)
+    security_scan_compute_type = optional(string, "BUILD_GENERAL1_SMALL")
+```
+
+### 5. Update the Root templates main.tf Configuration
+In `resources/templates/main.tf`:
+- Add the S3 bucket for DevSecOps reports:
+```elixir
+# -------------------------------------------------------------------
+# Central S3 Bucket for Production DevSecOps Security Reports
+# -------------------------------------------------------------------
+resource "aws_s3_bucket" "devsecops_reports" {
+  bucket        = "prod-devsecops-reports-storage-bucket"
+  force_destroy = true
+
+  tags = {
+    Environment = "production"
+    Project     = "lawyered"
+    Role        = "security"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "devsecops_reports" {
+  bucket = aws_s3_bucket.devsecops_reports.id
+
+  block_public_acls       = true
+  block_public_policy     = false
+  ignore_public_acls      = true
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_policy" "devsecops_public" {
+  bucket = aws_s3_bucket.devsecops_reports.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "PublicReadForReports"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.devsecops_reports.arn}/*"
+      }
+    ]
+  })
+}
+```
+- Add the DevSecOps IAM role and policy (update the bucket resource block to reference `prod-devsecops-reports-storage-bucket`):
+```elixir
+# -------------------------------------------------------------------
+# DevSecOps Shared IAM Role for CodeBuild Security Scanning (Production)
+# -------------------------------------------------------------------
+resource "aws_iam_role" "devsecops_role" {
+  name = "prod-devsecops-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "codebuild.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Environment = "production"
+    Project     = "lawyered"
+    Role        = "security"
+  }
+}
+
+resource "aws_iam_role_policy" "devsecops" {
+  name = "prod-devsecops-policy"
+  role = aws_iam_role.devsecops_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetBucketVersioning",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Effect = "Allow"
+        Resource = [
+          "arn:aws:s3:::*-artifacts-*",
+          "arn:aws:s3:::*-artifacts-*/*",
+          "arn:aws:s3:::prod-devsecops-reports-storage-bucket",
+          "arn:aws:s3:::prod-devsecops-reports-storage-bucket/*"
+        ]
+      },
+      {
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Effect   = "Allow"
+        Resource = [
+          aws_secretsmanager_secret.slack_webhook.arn,
+          aws_secretsmanager_secret.github_ssh_key.arn
+        ]
+      }
+    ]
+  })
+}
+```
+- Add the AWS Secrets Manager Secret shell for the Slack webhook (this creates the key structure in AWS Secrets Manager, keeping it secure and preventing leak of the credentials in git):
+```elixir
+# -------------------------------------------------------------------
+# AWS Secrets Manager Secret for Slack Alerts Webhook URL (Production)
+# -------------------------------------------------------------------
+resource "aws_secretsmanager_secret" "slack_webhook" {
+  name                    = "devsecops/slack-webhook"
+  description             = "Slack Incoming Webhook URL for DevSecOps alerts in Production"
+  recovery_window_in_days = 0
+}
+```
+- Update the `module "codepipeline"` block in `resources/templates/main.tf` to pass the parameters:
+```elixir
+  enable_security_scan         = try(each.value.enable_security_scan, false)
+  security_scan_role_arn       = aws_iam_role.devsecops_role.arn
+  security_reports_bucket_name = aws_s3_bucket.devsecops_reports.bucket
+  security_scan_compute_type   = try(each.value.security_scan_compute_type, "BUILD_GENERAL1_SMALL")
+```
+
+### 6. Update the Root templates terraform.tfvars
+In `resources/templates/terraform.tfvars`, locate the `subscriber-fe` object inside the `codepipelines` map configuration, and add these parameters:
+```elixir
+    enable_security_scan       = true
+    security_scan_compute_type = "BUILD_GENERAL1_SMALL"
+```
+
+Please execute the above changes, then verify with `terraform plan` and `terraform apply`.
+```
+---
+
+## 🚀 Execution & Activation Checklist
+Once the AI copilot has successfully applied the configurations in the production environment:
+1. **Locate the Webhook Secret**: Open the AWS Secrets Manager console in your Production account and find `devsecops/slack-webhook`.
+2. **Store your Slack Webhook URL**: Set the value of the secret to your production Slack Webhook URL. (Note: Terraform will never overwrite this since we only manage the secret shell).
+3. **Trigger Pipeline**: Run a deploy or manually release change in the `subscriber-fe-pipeline` in CodePipeline to verify the scanning and Slack alerts!
