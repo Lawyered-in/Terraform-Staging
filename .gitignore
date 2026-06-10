@@ -21,6 +21,7 @@ walkthrough.md
 secrets-flow-plan.md
 implementation_plan.md
 task.md
+implementation_plan/
 
 # Ignore temp plans, text files, and states in templates
 resources/templates/*.txt
