@@ -1,0 +1,42 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-prosper-be
+  namespace: stg
+  labels:
+    app: stg-prosper-be
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-prosper-be
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-prosper-be
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stg-prosper-be
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/prosper-be:24231c8
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: prosper-be-secret
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"

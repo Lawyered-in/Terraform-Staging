@@ -1,0 +1,78 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-admin-lawyered
+  namespace: stg
+  labels:
+    app: stg-admin-lawyered
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-admin-lawyered
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: stg-admin-lawyered
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+
+        # â”€â”€ nginx sidecar (receives all traffic, proxies to app on :3000) â”€â”€â”€â”€
+        - name: nginx-proxy
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+        # â”€â”€ Main application container (only reachable via sidecar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        - name: stg-admin-lawyered
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/admin-lawyered:c9fc3b1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: app
+          envFrom:
+            - secretRef:
+                name: admin-lawyered-secret
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/public/uploads
+            - name: puppeteer-cache
+              mountPath: /app/.cache/puppeteer
+      volumes:
+        - name: nginx-config                          # â† added
+          configMap:
+            name: stg-admin-lawyered-nginx-config
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: stg-admin-lawyered-uploads-pvc
+        - name: puppeteer-cache
+          persistentVolumeClaim:
+            claimName: stg-admin-lawyered-puppeteer-cache-pvc

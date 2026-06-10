@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stg-subscriber-fe
+  namespace: argo-cd
+  labels:
+    app: stg-subscriber-fe
+    tier: application
+    environment: stg
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Lawyered-in/k8s-manifest.git
+    targetRevision: staging
+    path: deployments/stg-subscriber-fe
+  destination:https://github.com/Lawyered-in/k8s-manifest/blob/staging/deployments/stg-prosper-be/migration-job.yaml
+    server: https://kubernetes.default.svc
+    namespace: stg
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - Replace=true
+  revisionHistoryLimit: 3

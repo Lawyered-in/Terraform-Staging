@@ -1,0 +1,43 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-qr-api
+  namespace: stg
+  labels:
+    app: stg-qr-api
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-qr-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-qr-api
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stg-qr-api
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/qr-api:5fe5f33
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4002
+          envFrom:
+            - secretRef:
+                name: qr-api-secret
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stg
+  labels:
+    environment: staging
+    managed-by: manual
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eso-staging-shared
+  namespace: stg
+  labels:
+    environment: staging
+    managed-by: external-secrets-operator
+  annotations:
+    # Point this to the new staging IAM Role we will create in Step 2
+    eks.amazonaws.com/role-arn: arn:aws:iam::344367180480:role/ESOStagingSharedRole

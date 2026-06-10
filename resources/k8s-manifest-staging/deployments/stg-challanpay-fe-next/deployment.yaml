@@ -1,0 +1,43 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-challanpay-fe-next
+  namespace: stg
+  labels:
+    app: stg-challanpay-fe-next
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-challanpay-fe-next
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-challanpay-fe-next
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stg-challanpay-fe-next
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/challanpay-fe-next:8ba2aa9
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: challanpay-fe-next-secret
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+

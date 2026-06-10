@@ -1,0 +1,28 @@
+global:
+  # -- Default domain for Argo CD
+  domain: argocd-staging.lawyered.in
+
+configs:
+  cm:
+    # -- Argo CD server URL
+    url: https://argocd-staging.lawyered.in
+    # -- Admin login enabled
+    admin.enabled: true
+
+server:
+  # -- Run server without TLS (offloaded to LoadBalancer)
+  insecure: true
+  
+  service:
+    # -- ClusterIP service for internal access (use Ingress for external)
+    type: ClusterIP
+
+
+  # -- Basic configuration - extra attributes can be added as needed
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi

@@ -1,0 +1,44 @@
+Deployment Pipeline Standardization - Final Summary
+Date: (13-05-2026)
+Task: standardize_trunk_based_deployment
+
+1. INFRASTRUCTURE SYNCHRONIZATION
+- Successfully synchronized Terraform state with manual AWS changes.
+- Imported and refactored 'prod-build-promotion' CodeBuild project.
+- Standardized IAM Policies: 'ProdECRPushAssumeRole' and 'CodeBuildBasePolicy-prod-build-promotion'.
+
+2. PIPELINE ENHANCEMENTS
+- Refactored 'codepipeline' module to support exported variables.
+- Implemented 'StagingBuildNamespace' across all pipelines for data persistence.
+- Added 'IMAGE_TAG' and 'REPOS_URL' exports to buildspecs.
+- Upgraded build environments to 'amazonlinux2-x86_64-standard:5.0'.
+
+3. TRUNK-BASED PROMOTION ROLLOUT
+- Added 'ApproveForProduction' (Manual Approval) stage to 15 application pipelines.
+- Added 'PromoteToProduction' (Cross-Account ECR Push) stage to 15 application pipelines.
+- Configured dynamic environment variables (SERVICE_NAME, IMAGE_TAG, REPOS_URL) for each promotion action.
+
+4. UPDATED PIPELINES
+- admin-lawyered-fe
+- admin-lawyered
+- lawyered-in-website
+- partners-portal-fe
+- challanpay-fe-next
+- api-challans
+- qr-api
+- core-platform-be
+- core-platform-fe
+- coworking-platform-be
+- coworking-platform-fe
+- prosper-be
+- prosper-fe
+- subscriber-fe
+- lawyered-be
+
+5. VERIFICATION
+- Terraform Plan: Confirmed 30+ new stages and attribute updates.
+- Terraform Apply: Successfully executed (Exit Code 0).
+- State: Clean, no drift.
+
+---
+End of Document

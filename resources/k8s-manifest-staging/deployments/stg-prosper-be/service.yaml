@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stg-prosper-be
+  namespace: stg
+  labels:
+    app: stg-prosper-be
+    environment: stg
+spec:
+  type: ClusterIP
+  selector:
+    app: stg-prosper-be
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8000

@@ -1,0 +1,422 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Installing dependencies...
+      - pip3 install semgrep==1.68.0 fpdf2
+      - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $REPOS_URL
+      - SCAN_DATE=$(date +%d-%m-%Y)
+      - APP_NAME=$(echo $PIPELINE_NAME | sed 's/-pipeline$//')
+      - SCAN_FOLDER="DevSecOps-Reports-Folder/${APP_NAME}-reports/${SCAN_DATE}-${IMAGE_TAG}"
+      - echo "Setting up SSH key for git fetch..."
+      - mkdir -p ~/.ssh
+      - aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa
+      - chmod 600 ~/.ssh/id_rsa
+      - ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - echo "Configuring git and fetching history..."
+      - git init
+      - git remote add origin git@github.com:$REPOSITORY_ID.git
+      - |
+        if git fetch --depth=2 origin $BRANCH_NAME; then
+          git reset --soft FETCH_HEAD
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr '\n' ' ' || echo "")
+          echo "Changed files in commit: $CHANGED_FILES"
+          # Filter existing files
+          EXISTING_CHANGED_FILES=""
+          for f in $CHANGED_FILES; do
+            if [ -f "$f" ]; then
+              EXISTING_CHANGED_FILES="$EXISTING_CHANGED_FILES $f"
+            fi
+          done
+          echo "Existing changed files: $EXISTING_CHANGED_FILES"
+        else
+          echo "Git fetch failed, falling back to full scan."
+          EXISTING_CHANGED_FILES=""
+        fi
+  build:
+    commands:
+      - echo Running Semgrep SAST scan...
+      - |
+        if [ -n "$EXISTING_CHANGED_FILES" ]; then
+          echo "Scanning changed files incrementally..."
+          semgrep scan --config=auto --sarif --output semgrep.sarif $EXISTING_CHANGED_FILES || true
+        else
+          echo "Running full Semgrep scan..."
+          semgrep scan --config=auto --sarif --output semgrep.sarif || true
+        fi
+      - echo Pulling Docker image from ECR...
+      - docker pull $REPOS_URL:$IMAGE_TAG
+      - echo Generating SBOM with Syft...
+      - syft docker:$REPOS_URL:$IMAGE_TAG -o json > sbom.json
+      - echo Running Grype Vulnerability scan...
+      - export GRYPE_DB_VALIDATE_AGE=false
+      - grype docker:$REPOS_URL:$IMAGE_TAG -o sarif > grype.sarif || true
+  post_build:
+    commands:
+      - echo Creating PDF generation script...
+      - |
+        cat << 'EOF' > generate_pdf_report.py
+        import sys
+        import os
+        import json
+        from datetime import datetime
+        from fpdf import FPDF
+
+        def parse_sarif(file_path):
+            findings = []
+            if not os.path.exists(file_path):
+                return findings
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                for run in data.get('runs', []):
+                    for result in run.get('results', []):
+                        rule_id = result.get('ruleId', 'N/A')
+                        level = result.get('level', 'warning')
+                        message = result.get('message', {}).get('text', 'No message')
+                        
+                        file_name = 'N/A'
+                        line_number = 'N/A'
+                        locations = result.get('locations', [])
+                        if locations:
+                            ploc = locations[0].get('physicalLocation', {})
+                            file_name = ploc.get('artifactLocation', {}).get('uri', 'N/A')
+                            region = ploc.get('region', {})
+                            line_number = region.get('startLine', 'N/A')
+                        
+                        findings.append({
+                            'rule_id': rule_id,
+                            'level': level,
+                            'message': message,
+                            'file': file_name,
+                            'line': line_number
+                        })
+            except Exception as e:
+                print(f"Error parsing {file_path}: {e}")
+            return findings
+
+        class SecurityReportPDF(FPDF):
+            def __init__(self, report_type="Consolidated", *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.report_type = report_type
+
+            def header(self):
+                self.set_fill_color(30, 58, 138)
+                self.rect(0, 0, 210, 35, 'F')
+                self.set_text_color(255, 255, 255)
+                self.set_font('helvetica', 'B', 16)
+                self.set_xy(10, 8)
+                title = f"DevSecOps {self.report_type} Report"
+                self.cell(0, 8, title, align='L')
+                self.set_font('helvetica', '', 9)
+                self.set_xy(10, 18)
+                self.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", align='L')
+                self.ln(20)
+
+            def footer(self):
+                self.set_y(-15)
+                self.set_font('helvetica', 'I', 8)
+                self.set_text_color(107, 114, 128)
+                self.cell(0, 10, f'Page {self.page_no()}/{{nb}} | Lawyered DevSecOps Pipeline', align='C')
+
+            def chapter_title(self, title):
+                self.set_font('helvetica', 'B', 12)
+                self.set_text_color(30, 58, 138)
+                self.cell(0, 8, title, 0, 1, 'L')
+                self.ln(1)
+
+            def add_summary_table(self, semgrep_findings, grype_findings, app_name, image_tag):
+                self.set_font('helvetica', 'B', 10)
+                self.set_text_color(31, 41, 55)
+                self.cell(30, 6, "Application:", 0)
+                self.set_font('helvetica', '', 10)
+                self.cell(0, 6, app_name, 0, 1)
+                self.set_font('helvetica', 'B', 10)
+                self.cell(30, 6, "Image Tag:", 0)
+                self.set_font('helvetica', '', 10)
+                self.cell(0, 6, image_tag, 0, 1)
+                self.ln(3)
+                
+                self.set_font('helvetica', 'B', 9)
+                self.set_fill_color(243, 244, 246)
+                self.set_text_color(31, 41, 55)
+                self.cell(50, 7, "Scanner", 1, 0, 'C', True)
+                self.cell(35, 7, "High (Errors)", 1, 0, 'C', True)
+                self.cell(35, 7, "Medium (Warnings)", 1, 0, 'C', True)
+                self.cell(35, 7, "Low (Info)", 1, 0, 'C', True)
+                self.cell(35, 7, "Total Findings", 1, 1, 'C', True)
+                
+                def map_severity(level):
+                    lvl = level.lower()
+                    if lvl in ['error', 'high', 'critical']:
+                        return 'high'
+                    if lvl in ['warning', 'medium', 'moderate']:
+                        return 'medium'
+                    return 'low'
+                    
+                def count_severities(findings):
+                    h = sum(1 for f in findings if map_severity(f['level']) == 'high')
+                    m = sum(1 for f in findings if map_severity(f['level']) == 'medium')
+                    l = sum(1 for f in findings if map_severity(f['level']) == 'low')
+                    return h, m, l, len(findings)
+                    
+                s_h, s_m, s_l, s_t = count_severities(semgrep_findings)
+                g_h, g_m, g_l, g_t = count_severities(grype_findings)
+                
+                self.set_font('helvetica', '', 9)
+                
+                if self.report_type in ["Consolidated", "Semgrep SAST"]:
+                    self.cell(50, 7, "Semgrep (SAST)", 1, 0, 'L')
+                    self.set_text_color(239, 68, 68) if s_h > 0 else self.set_text_color(31, 41, 55)
+                    self.cell(35, 7, str(s_h), 1, 0, 'C')
+                    self.set_text_color(245, 158, 11) if s_m > 0 else self.set_text_color(31, 41, 55)
+                    self.cell(35, 7, str(s_m), 1, 0, 'C')
+                    self.set_text_color(107, 114, 128)
+                    self.cell(35, 7, str(s_l), 1, 0, 'C')
+                    self.set_text_color(31, 41, 55)
+                    self.cell(35, 7, str(s_t), 1, 1, 'C')
+                
+                if self.report_type in ["Consolidated", "Grype SCA"]:
+                    self.cell(50, 7, "Grype (SCA)", 1, 0, 'L')
+                    self.set_text_color(239, 68, 68) if g_h > 0 else self.set_text_color(31, 41, 55)
+                    self.cell(35, 7, str(g_h), 1, 0, 'C')
+                    self.set_text_color(245, 158, 11) if g_m > 0 else self.set_text_color(31, 41, 55)
+                    self.cell(35, 7, str(g_m), 1, 0, 'C')
+                    self.set_text_color(107, 114, 128)
+                    self.cell(35, 7, str(g_l), 1, 0, 'C')
+                    self.set_text_color(31, 41, 55)
+                    self.cell(35, 7, str(g_t), 1, 1, 'C')
+                
+                self.set_font('helvetica', 'B', 9)
+                self.cell(50, 7, "Combined Total" if self.report_type == "Consolidated" else "Total Findings", 1, 0, 'L', True)
+                
+                t_h = s_h + g_h if self.report_type == "Consolidated" else (s_h if self.report_type == "Semgrep SAST" else g_h)
+                t_m = s_m + g_m if self.report_type == "Consolidated" else (s_m if self.report_type == "Semgrep SAST" else g_m)
+                t_l = s_l + g_l if self.report_type == "Consolidated" else (s_l if self.report_type == "Semgrep SAST" else g_l)
+                t_t = s_t + g_t if self.report_type == "Consolidated" else (s_t if self.report_type == "Semgrep SAST" else g_t)
+                
+                self.set_text_color(239, 68, 68) if t_h > 0 else self.set_text_color(31, 41, 55)
+                self.cell(35, 7, str(t_h), 1, 0, 'C', True)
+                self.set_text_color(245, 158, 11) if t_m > 0 else self.set_text_color(31, 41, 55)
+                self.cell(35, 7, str(t_m), 1, 0, 'C', True)
+                self.set_text_color(107, 114, 128)
+                self.cell(35, 7, str(t_l), 1, 0, 'C', True)
+                self.set_text_color(31, 41, 55)
+                self.cell(35, 7, str(t_t), 1, 1, 'C', True)
+                self.ln(6)
+
+                with open('counts.env', 'w') as f:
+                    f.write(f"S_HIGH={s_h}\n")
+                    f.write(f"S_MED={s_m}\n")
+                    f.write(f"S_LOW={s_l}\n")
+                    f.write(f"S_TOT={s_t}\n")
+                    f.write(f"G_HIGH={g_h}\n")
+                    f.write(f"G_MED={g_m}\n")
+                    f.write(f"G_LOW={g_l}\n")
+                    f.write(f"G_TOT={g_t}\n")
+                    f.write(f"HIGH_COUNT={s_h + g_h}\n")
+                    f.write(f"MED_COUNT={s_m + g_m}\n")
+                    f.write(f"LOW_COUNT={s_l + g_l}\n")
+
+            def add_findings_table(self, title, findings):
+                self.chapter_title(title)
+                if not findings:
+                    self.set_font('helvetica', 'I', 9)
+                    self.set_text_color(107, 114, 128)
+                    self.cell(0, 8, "No vulnerabilities or findings identified.", 0, 1)
+                    self.ln(3)
+                    return
+                    
+                def map_severity(level):
+                    lvl = level.lower()
+                    if lvl in ['error', 'high', 'critical']:
+                        return 0
+                    if lvl in ['warning', 'medium', 'moderate']:
+                        return 1
+                    return 2
+                    
+                findings.sort(key=lambda x: map_severity(x['level']))
+                display_findings = findings[:50]
+                
+                self.set_font('helvetica', 'B', 8)
+                self.set_fill_color(229, 231, 235)
+                self.set_text_color(31, 41, 55)
+                
+                self.cell(20, 6, "Severity", 1, 0, 'C', True)
+                self.cell(55, 6, "Location / Package", 1, 0, 'L', True)
+                self.cell(45, 6, "Rule / Vuln ID", 1, 0, 'L', True)
+                self.cell(70, 6, "Description", 1, 1, 'L', True)
+                
+                self.set_font('helvetica', '', 7)
+                for f in display_findings:
+                    if self.get_y() > 270:
+                        self.add_page()
+                        self.set_font('helvetica', 'B', 8)
+                        self.set_fill_color(229, 231, 235)
+                        self.set_text_color(31, 41, 55)
+                        self.cell(20, 6, "Severity", 1, 0, 'C', True)
+                        self.cell(55, 6, "Location / Package", 1, 0, 'L', True)
+                        self.cell(45, 6, "Rule / Vuln ID", 1, 0, 'L', True)
+                        self.cell(70, 6, "Description", 1, 1, 'L', True)
+                        self.set_font('helvetica', '', 7)
+
+                    lvl = f['level'].upper()
+                    if lvl in ['ERROR', 'HIGH', 'CRITICAL']:
+                        self.set_text_color(239, 68, 68)
+                    elif lvl in ['WARNING', 'MEDIUM', 'MODERATE']:
+                        self.set_text_color(245, 158, 11)
+                    else:
+                        self.set_text_color(107, 114, 128)
+                        
+                    start_y = self.get_y()
+                    self.cell(20, 10, lvl, 1, 0, 'C')
+                    self.set_text_color(31, 41, 55)
+                    
+                    loc = f"{f['file']}:{f['line']}" if f['line'] != 'N/A' else f['file']
+                    if len(loc) > 36:
+                        loc = "..." + loc[-33:]
+                    self.cell(55, 10, loc, 1, 0, 'L')
+                    
+                    rid = f['rule_id']
+                    if len(rid) > 30:
+                        rid = rid[:27] + "..."
+                    self.cell(45, 10, rid, 1, 0, 'L')
+                    
+                    desc = f['message'].replace('\n', ' ')
+                    if len(desc) > 95:
+                        desc = desc[:92] + "..."
+                    
+                    x = self.get_x()
+                    self.multi_cell(70, 5, desc, 1, 'L')
+                    self.set_y(start_y + 10)
+                    
+                if len(findings) > 50:
+                    self.ln(2)
+                    self.set_font('helvetica', 'I', 8)
+                    self.set_text_color(107, 114, 128)
+                    self.cell(0, 5, f"* Showing first 50 of {len(findings)} total findings. See full SARIF results for details.", 0, 1)
+                self.ln(5)
+
+        def main():
+            if len(sys.argv) < 3:
+                print("Usage: python generate_pdf_report.py <app_name> <image_tag>")
+                sys.exit(1)
+            app_name = sys.argv[1]
+            image_tag = sys.argv[2]
+            semgrep_findings = parse_sarif('semgrep.sarif')
+            grype_findings = parse_sarif('grype.sarif')
+            
+            # 1. Generate Consolidated Report
+            pdf = SecurityReportPDF(report_type="Consolidated")
+            pdf.alias_nb_pages()
+            pdf.add_page()
+            pdf.add_summary_table(semgrep_findings, grype_findings, app_name, image_tag)
+            pdf.add_findings_table("Semgrep SAST Code Scan Details", semgrep_findings)
+            pdf.add_findings_table("Grype SCA Dependency Scan Details", grype_findings)
+            pdf.output('security_report.pdf')
+            print("Report generated: security_report.pdf")
+
+            # 2. Generate Semgrep Only Report
+            pdf_s = SecurityReportPDF(report_type="Semgrep SAST")
+            pdf_s.alias_nb_pages()
+            pdf_s.add_page()
+            pdf_s.add_summary_table(semgrep_findings, [], app_name, image_tag)
+            pdf_s.add_findings_table("Semgrep SAST Code Scan Details", semgrep_findings)
+            pdf_s.output('semgrep_report.pdf')
+            print("Report generated: semgrep_report.pdf")
+
+            # 3. Generate Grype Only Report
+            pdf_g = SecurityReportPDF(report_type="Grype SCA")
+            pdf_g.alias_nb_pages()
+            pdf_g.add_page()
+            pdf_g.add_summary_table([], grype_findings, app_name, image_tag)
+            pdf_g.add_findings_table("Grype SCA Dependency Scan Details", grype_findings)
+            pdf_g.output('grype_report.pdf')
+            print("Report generated: grype_report.pdf")
+
+        if __name__ == '__main__':
+            main()
+        EOF
+      - echo Generating PDF reports...
+      - python3 generate_pdf_report.py "$APP_NAME" "$IMAGE_TAG"
+      - echo Uploading security reports to S3...
+      - aws s3 cp semgrep.sarif s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/semgrep.sarif
+      - aws s3 cp sbom.json s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/sbom.json
+      - aws s3 cp grype.sarif s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype.sarif
+      - aws s3 cp security_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/security_report.pdf
+      - aws s3 cp semgrep_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/semgrep_report.pdf
+      - aws s3 cp grype_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype_report.pdf
+      - echo Generating 7-day pre-signed S3 download URLs...
+      - SEMGREP_LINK=$(aws s3 presign s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/semgrep_report.pdf --expires-in 604800)
+      - GRYPE_LINK=$(aws s3 presign s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype_report.pdf --expires-in 604800)
+      - SBOM_LINK=$(aws s3 presign s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/sbom.json --expires-in 604800)
+      - PDF_LINK=$(aws s3 presign s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/security_report.pdf --expires-in 604800)
+      - echo Creating cleanup script...
+      - |
+        cat << 'EOF' > cleanup.py
+        import sys, datetime, boto3
+        bucket_name = sys.argv[1]
+        app_name = sys.argv[2]
+        max_reports = 4
+        s3 = boto3.client('s3')
+        paginator = s3.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=bucket_name, Prefix=f"DevSecOps-Reports-Folder/{app_name}-reports/", Delimiter='/')
+        prefixes = []
+        for page in pages:
+            for prefix in page.get('CommonPrefixes', []):
+                prefixes.append(prefix['Prefix'])
+        prefix_times = []
+        for p in prefixes:
+            resp = s3.list_objects_v2(Bucket=bucket_name, Prefix=p, MaxKeys=5)
+            if 'Contents' in resp:
+                last_modified = max(obj['LastModified'] for obj in resp['Contents'])
+                prefix_times.append((p, last_modified))
+            else:
+                prefix_times.append((p, datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)))
+        prefix_times.sort(key=lambda x: x[1])
+        if len(prefix_times) > max_reports:
+            to_delete = prefix_times[:-max_reports]
+            for p, _ in to_delete:
+                print(f"Deleting old reports in: {p}")
+                del_paginator = s3.get_paginator('list_objects_v2')
+                del_pages = del_paginator.paginate(Bucket=bucket_name, Prefix=p)
+                for del_page in del_pages:
+                    if 'Contents' in del_page:
+                        delete_keys = {'Objects': [{'Key': obj['Key']} for obj in del_page['Contents']]}
+                        s3.delete_objects(Bucket=bucket_name, Delete=delete_keys)
+        EOF
+      - echo Running cleanup script...
+      - python3 cleanup.py "$SECURITY_REPORTS_BUCKET" "$APP_NAME"
+      - echo Cleanup finished.
+      - echo Loading count environment variables...
+      - |
+        if [ -f counts.env ]; then
+          . ./counts.env
+        else
+          HIGH_COUNT=0
+          MED_COUNT=0
+          LOW_COUNT=0
+        fi
+      - |
+        if [ "$HIGH_COUNT" -eq 0 ]; then
+          SECURITY_MESSAGE="✅ You're Secure"
+        else
+          SECURITY_MESSAGE="⚠️ Action Required"
+        fi
+      - echo Fetching Slack Webhook URL from Secrets Manager...
+      - SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/slack-webhook --query SecretString --output text || echo "")
+      - |
+        if [ ! -z "$SLACK_WEBHOOK_URL" ] && [ "$SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
+          echo "Sending scan status alert to Slack..."
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"text\": \"🛡️ *Security Pipeline Results:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)\\n--------------------------------------------------\\n*🔑 Security Gates:*\\n  ✅ SAST Scan (Semgrep) completed -- <${SEMGREP_LINK}|Download Semgrep Report>\\n  ✅ Dependency Scan (Grype) completed -- <${GRYPE_LINK}|Download Grype Report>\\n  ✅ SBOM Generation (Syft) completed -- <${SBOM_LINK}|Download SBOM>\\n\\n*📈 Results:* ${SECURITY_MESSAGE}\\n  🔴 High: \`${HIGH_COUNT}\`  |  🟡 Medium: \`${MED_COUNT}\`  |  🟢 Low: \`${LOW_COUNT}\`\\n\\n*🔗 Artifacts:*\\n  📄 Consolidated Report: <${PDF_LINK}|Download PDF>\\n  📂 S3 Directory: <https://s3.console.aws.amazon.com/s3/buckets/${SECURITY_REPORTS_BUCKET}?prefix=${SCAN_FOLDER}/|View S3 Folder>\"
+          }" "$SLACK_WEBHOOK_URL"
+        else
+          echo "Slack Webhook URL is empty or placeholder, skipping notification."
+        fi

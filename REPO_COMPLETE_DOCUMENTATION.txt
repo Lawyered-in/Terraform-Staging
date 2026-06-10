@@ -1,0 +1,168 @@
+﻿================================================================================
+   LAWYERED-IN INFRASTRUCTURE — COMPLETE REPOSITORY DOCUMENTATION
+   Auto-generated: April 27, 2026
+   Project: AWS EKS + GitOps Infrastructure for Lawyered-in Microservices
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1.  REPOSITORY OVERVIEW
+2.  FOLDER & FILE STRUCTURE (A to Z)
+3.  ARCHITECTURE DIAGRAM (Text)
+4.  MODULE-BY-MODULE DEEP DIVE
+    4.1  VPC Module
+    4.2  EKS Module
+    4.3  EKS-Addons Module
+    4.4  Helm-Addons Module
+    4.5  ArgoCD Module
+    4.6  CodePipeline Module
+    4.7  ECR Module
+    4.8  Aurora Module
+    4.9  RDS Module
+    4.10 S3 Module
+    4.11 KMS Module
+    4.12 EC2 Module
+    4.13 IAM Module
+5.  ROOT ORCHESTRATION (templates/main.tf)
+6.  CONFIGURATION (terraform.tfvars)
+7.  ARGOCD MANIFESTS
+8.  IMPLEMENTATION PLANS
+9.  HOW FILES CALL EACH OTHER (Dependency Map)
+10. END-TO-END CI/CD FLOW
+11. KNOWN ISSUES & RESOLUTIONS
+12. QUICK REFERENCE CHEAT SHEET
+
+================================================================================
+1. REPOSITORY OVERVIEW
+================================================================================
+
+This repository is the COMPLETE INFRASTRUCTURE-AS-CODE (IaC) for the
+Lawyered-in platform running on AWS. It manages everything from networking
+to application deployment using Terraform + GitOps (Argo CD).
+
+  Project Name  : Lawyered-in Platform Infrastructure
+  Cloud         : AWS (ap-south-1 / Mumbai)
+  IaC Tool      : Terraform >= 1.5.0
+  GitOps Tool   : Argo CD
+  CI/CD         : AWS CodePipeline + CodeBuild
+  Kubernetes    : EKS (Elastic Kubernetes Service)
+  Database      : Aurora MySQL 8.0 (Serverless v2)
+  Registry      : Amazon ECR (7 repositories)
+  State Backend : S3 (tf-statefile-npbucket)
+
+What this repo does in one sentence:
+  "Push code to GitHub staging branch → Docker image built → pushed to ECR →
+   Kubernetes manifest updated → Argo CD deploys to EKS automatically."
+
+================================================================================
+2. FOLDER & FILE STRUCTURE (A to Z)
+================================================================================
+
+resources/                          <-- ROOT of all infrastructure code
+|
+|-- README.md                       <-- Project overview and how to run terraform
+|-- JOURNAL.md                      <-- Live change log (auto-maintained)
+|-- issues_inventory.md             <-- All problems encountered + solutions
+|
+|-- argocd-manifests/               <-- Argo CD Application YAML files
+|   |-- admin-lawyered.yaml         <-- ArgoCD app for admin-lawyered service
+|   |-- admin-lawyered-fe.yaml      <-- ArgoCD app for admin-lawyered-fe service
+|   |-- api-challans.yaml           <-- ArgoCD app for api-challans service
+|   |-- challanpay-fe-next.yaml     <-- ArgoCD app for challanpay-fe-next service
+|   |-- lawyered-in-website.yaml    <-- ArgoCD app for lawyered-in-website service
+|   |-- partners-portal-fe.yaml     <-- ArgoCD app for partners-portal-fe service
+|   |-- qr-api.yaml                 <-- ArgoCD app for qr-api service
+|   |-- infrastructure-storage/
+|       |-- storage-class.yaml      <-- EBS gp3 StorageClass for persistent volumes
+|
+|-- modules/                        <-- Reusable Terraform modules (building blocks)
+|   |
+|   |-- argocd/                     <-- Installs Argo CD via Helm
+|   |   |-- main.tf                 <-- Helm release for argo-cd chart v9.5.2
+|   |   |-- variables.tf            <-- cluster_name, tags
+|   |   |-- helm/
+|   |       |-- argocd-values.yaml  <-- Argo CD config (domain, TLS, resources)
+|   |
+|   |-- aurora/                     <-- Aurora MySQL cluster
+|   |   |-- main.tf                 <-- Cluster, instances, parameter groups, SG
+|   |   |-- variables.tf            <-- All Aurora config variables
+|   |   |-- outputs.tf              <-- Endpoints, cluster ID, secret ARN
+|   |
+|   |-- codepipeline/               <-- CI/CD pipeline factory (1 module = 1 pipeline)
+|   |   |-- main.tf                 <-- S3, IAM roles, CodeBuild, CodePipeline
+|   |   |-- variables.tf            <-- pipeline_name, github_connection_arn, etc.
+|   |
+|   |-- ec2/                        <-- EC2 instance provisioning
+|   |   |-- main.tf                 <-- Security group + EC2 instance
+|   |   |-- variables.tf            <-- ami_id, instance_type, subnet_id, etc.
+|   |   |-- outputs.tf              <-- instance_id, private_ip, sg_id
+|   |
+|   |-- ecr/                        <-- ECR repository factory
+|   |   |-- main.tf                 <-- Repository + lifecycle policy
+|   |   |-- variables.tf            <-- name, image_tag_mutability, scan_on_push
+|   |   |-- output.tf               <-- repository_url, repository_arn
+|   |
+|   |-- eks/                        <-- EKS cluster + node groups
+|   |   |-- main.tf                 <-- IAM roles, cluster, node groups, OIDC, autoscaler role
+|   |   |-- variables.tf            <-- cluster_name, kubernetes_version, node_groups, etc.
+|   |   |-- outputs.tf              <-- cluster_endpoint, oidc_provider_arn, autoscaler_role_arn
+|   |   |-- manifest/
+|   |       |-- ingress.yaml.tftpl  <-- Argo CD ALB Ingress template (Terraform template file)
+|   |
+|   |-- eks-addons/                 <-- EKS managed addons (CNI, CoreDNS, EBS CSI, etc.)
+|   |   |-- main.tf                 <-- IRSA roles + aws_eks_addon resources
+|   |   |-- variables.tf            <-- cluster_name, oidc_provider_arn/url, addon_versions
+|   |
+|   |-- helm-addons/                <-- Helm-based cluster tools
+|   |   |-- main.tf                 <-- Cluster Autoscaler + AWS LB Controller Helm releases
+|   |   |-- variables.tf            <-- cluster_name, aws_region, role_arn, vpc_id, oidc
+|   |   |-- helm/
+|   |   |   |-- cluster-autoscaler-values.yaml  <-- Autoscaler Helm values template
+|   |   |-- iam/
+|   |       |-- lb-controller-policy.json       <-- Full IAM policy for LB Controller
+|   |
+|   |-- iam/                        <-- EC2 IAM role factory
+|   |   |-- main.tf                 <-- IAM role, SSM policy, optional policies, instance profile
+|   |   |-- variables.tf            <-- role_name, additional_policy_arns, inline_policy_json
+|   |   |-- outputs.tf              <-- role_arn, instance_profile_name
+|   |
+|   |-- kms/                        <-- KMS key factory
+|   |   |-- main.tf                 <-- KMS key + alias
+|   |   |-- variables.tf            <-- alias_name, rotation, deletion_window
+|   |   |-- outputs.tf              <-- key_id, key_arn, alias_arn
+|   |
+|   |-- rds/                        <-- Standard RDS instance (non-Aurora)
+|   |   |-- main.tf                 <-- Security group, subnet group, RDS instance
+|   |   |-- variables.tf            <-- identifier, engine, instance_class, etc.
+|   |   |-- outputs.tf              <-- endpoint, address, port, sg_id
+|   |
+|   |-- s3/                         <-- S3 bucket factory
+|   |   |-- main.tf                 <-- Bucket, public access block, versioning, encryption
+|   |   |-- variables.tf            <-- bucket_name, versioning, kms_key_arn, lifecycle_rules
+|   |   |-- outputs.tf              <-- bucket_id, bucket_arn, domain_name
+|   |
+|   |-- vpc/                        <-- VPC + subnets + routing
+|       |-- main.tf                 <-- VPC, public/private/database subnets, IGW, NAT, route tables
+|       |-- variables.tf            <-- vpc_name, cidr_block, public/private/database_subnets
+|       |-- outputs.tf              <-- vpc_id, subnet_ids (public/private/database), nat_id
+|
+|-- templates/                      <-- Root Terraform configuration (entry point)
+    |-- main.tf                     <-- MASTER ORCHESTRATOR: calls all modules
+    |-- variables.tf                <-- All input variable definitions
+    |-- terraform.tfvars            <-- Actual values for all variables
+    |-- backend.tf                  <-- S3 remote state + provider versions
+    |-- .gitignore                  <-- Ignores .terraform/, *.tfstate, keys/
+    |-- .terraform/                 <-- Downloaded providers (not committed)
+    |   |-- modules/modules.json    <-- Module registry cache
+    |   |-- providers/              <-- Provider binaries (aws, helm, kubectl, kubernetes)
+
+implementation_plan/                <-- Documentation & planning files
+    |-- INDEX.md                    <-- Master index of all plans
+    |-- walkthrough.md              <-- GitOps manifest auto-update walkthrough
+    |-- manifest_update_automations.md  <-- Plan for manifest update feature
+    |-- cicd_flow_lawyered_fe.md    <-- Detailed CI/CD flow for lawyered-in-website
+    |-- How GitHub Connection Works.txt  <-- How CodeStar Connection works
+    |-- How AWS Gets GitHub Access.txt   <-- OAuth flow explanation
+    |-- 2026-04-27/
+        |-- CodeBuild SSH Key Manifest Auto Update.txt  <-- Task log for SSH key feature
+
