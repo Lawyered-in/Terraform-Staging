@@ -400,7 +400,11 @@ resource "aws_secretsmanager_secret" "prod_app_secrets" {
 resource "aws_secretsmanager_secret_version" "prod_app_secrets" {
   for_each      = aws_secretsmanager_secret.prod_app_secrets
   secret_id     = each.value.id
-  secret_string = file("${path.module}/secrets/${each.key}.json")
+  secret_string = fileexists("${path.module}/secrets/${each.key}.json") ? file("${path.module}/secrets/${each.key}.json") : "{\"DUMMY_KEY\":\"PLACEHOLDER_VALUE\"}"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 # -------------------------------------------------------------------
@@ -416,6 +420,9 @@ locals {
     "challanpay-fe-next",
     "core-platform-fe",
     "coworking-platform-fe",
+    "faas-be",
+    "faas-fe",
+    "laravel-api",
     "lawyered-in-website",
     "partners-portal-fe",
     "prosper-fe",
@@ -443,6 +450,10 @@ resource "aws_secretsmanager_secret_version" "stg_app_secrets" {
   for_each      = aws_secretsmanager_secret.stg_app_secrets
   secret_id     = each.value.id
   secret_string = fileexists("${path.module}/secrets/${each.key}.json") ? file("${path.module}/secrets/${each.key}.json") : "{\"DUMMY_KEY\":\"PLACEHOLDER_VALUE\"}"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 # -------------------------------------------------------------------
@@ -717,8 +728,6 @@ module "codepipeline" {
   build_compute_type         = each.value.build_compute_type
   security_scan_compute_type = try(each.value.security_scan_compute_type, "BUILD_GENERAL1_SMALL")
   tags                       = each.value.tags
-
-  depends_on = [module.ecr]
 }
 
 # -------------------------------------------------------------------

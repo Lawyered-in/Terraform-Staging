@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stg-laravel-api
+  namespace: stg
+  labels:
+    app: stg-laravel-api
+    environment: stg
+spec:
+  type: ClusterIP
+  selector:
+    app: stg-laravel-api
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

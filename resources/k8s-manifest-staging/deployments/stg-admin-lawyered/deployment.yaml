@@ -26,7 +26,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
       containers:
 
-        # â”€â”€ nginx sidecar (receives all traffic, proxies to app on :3000) â”€â”€â”€â”€
+        #  nginx sidecar (receives all traffic, proxies to app on :3000)
         - name: nginx-proxy
           image: nginx:alpine
           ports:
@@ -67,7 +67,7 @@ spec:
             - name: puppeteer-cache
               mountPath: /app/.cache/puppeteer
       volumes:
-        - name: nginx-config                          # â† added
+        - name: nginx-config                          #  added
           configMap:
             name: stg-admin-lawyered-nginx-config
         - name: uploads
