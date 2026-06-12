@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stg-challanpay-react
+  namespace: argo-cd
+  labels:
+    app: stg-challanpay-react
+    tier: application
+    environment: stg
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Lawyered-in/k8s-manifest.git
+    targetRevision: staging
+    path: deployments/stg-challanpay-react
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stg
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - Replace=true
+  revisionHistoryLimit: 3

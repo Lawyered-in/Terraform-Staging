@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stg-challanpay-react
+  namespace: stg
+  labels:
+    app: stg-challanpay-react
+    environment: stg
+spec:
+  type: ClusterIP
+  selector:
+    app: stg-challanpay-react
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

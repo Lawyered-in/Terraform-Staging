@@ -319,6 +319,20 @@ ecr_repositories = {
       Project     = "lawyered"
     }
   }
+  # ------------------------------------------------------------------
+  # challanpay-react
+  # ECR Repository for the ChallanPay React SPA application.
+  # ------------------------------------------------------------------
+  challanpay-react = {
+    name                 = "challanpay-react"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
 }
 # -------------------------------------------------------------------
 # Aurora Cluster Configurations
@@ -425,14 +439,14 @@ github_connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connect
 
 codepipelines = {
   admin-lawyered-fe = {
-    repository_id      = "Lawyered-in/admin-lawyered-fe"
-    branch_name        = "staging"
-    ecr_key            = "admin-lawyered-fe"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-admin-lawyered-fe"
-    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/admin-lawyered-fe"
+    branch_name          = "staging"
+    ecr_key              = "admin-lawyered-fe"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-admin-lawyered-fe"
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
       VITE_API_URL                       = "https://staging.lawyered.in/api/v3/admin"
@@ -455,14 +469,14 @@ codepipelines = {
     }
   }
   admin-lawyered = {
-    repository_id      = "Lawyered-in/admin-lawyered"
-    branch_name        = "staging"
-    ecr_key            = "admin-lawyered"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-admin-lawyered"
-    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/admin-lawyered"
+    branch_name          = "staging"
+    ecr_key              = "admin-lawyered"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-admin-lawyered"
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
       DATABASE_URL = "mysql://admin:E7mshc5M7L3fkAVPc2<5qRT6o6i2@lawyered-database.cluster-cj446ammul0i.ap-south-1.rds.amazonaws.com:3306/proddblawyered"
@@ -507,14 +521,14 @@ codepipelines = {
     }
   }
   lawyered-in-website = {
-    repository_id      = "Lawyered-in/lawyered.in-website"
-    branch_name        = "staging"
-    ecr_key            = "lawyered-in-website"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-lawyered-in-website"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/lawyered.in-website"
+    branch_name          = "staging"
+    ecr_key              = "lawyered-in-website"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-lawyered-in-website"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/lawyered-website-assets"
@@ -526,14 +540,14 @@ codepipelines = {
     }
   }
   partners-portal-fe = {
-    repository_id      = "Lawyered-in/partners-portal-fe"
-    branch_name        = "staging"
-    ecr_key            = "partners-portal-fe"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-partners-portal-fe"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/partners-portal-fe"
+    branch_name          = "staging"
+    ecr_key              = "partners-portal-fe"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-partners-portal-fe"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     tags = {
       Environment = "stage"
@@ -542,14 +556,14 @@ codepipelines = {
     }
   }
   challanpay-fe-next = {
-    repository_id      = "Lawyered-in/challanpay-fe-next"
-    branch_name        = "staging"
-    ecr_key            = "challanpay-fe-next"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-challanpay-fe-next"
-    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/challanpay-fe-next"
+    branch_name          = "staging"
+    ecr_key              = "challanpay-fe-next"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-challanpay-fe-next"
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/challanpay-website-assets"
@@ -567,14 +581,14 @@ codepipelines = {
     }
   }
   api-challans = {
-    repository_id      = "Lawyered-in/api-challans"
-    branch_name        = "staging"
-    ecr_key            = "api-challans"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-api-challans"
-    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/api-challans"
+    branch_name          = "staging"
+    ecr_key              = "api-challans"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-api-challans"
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     custom_post_build_commands = [
       "echo Build completed on `date`",
@@ -604,14 +618,14 @@ codepipelines = {
     }
   }
   qr-api = {
-    repository_id      = "Lawyered-in/qr-api"
-    branch_name        = "staging"
-    ecr_key            = "qr-api"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-qr-api"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/qr-api"
+    branch_name          = "staging"
+    ecr_key              = "qr-api"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-qr-api"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     tags = {
       Environment = "stage"
@@ -628,16 +642,16 @@ codepipelines = {
   # k8s path   : deployments/stg-core-platform-be in k8s-manifest repo
   # ------------------------------------------------------------------
   core-platform-be = {
-    repository_id      = "india-accelerator/core-platform-be" # Full GitHub org/repo path
-    branch_name        = "development-branch"                 # Dedicated deployment branch
-    ecr_key            = "core-platform-be"                   # References ecr_repositories key above
-    prefetch_images    = ["node:22-alpine"]                   # Pre-pull to avoid Docker Hub rate limits
-    manifest_file_path = "deployments/stg-core-platform-be"   # Path in k8s-manifest repo to update
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "india-accelerator/core-platform-be" # Full GitHub org/repo path
+    branch_name          = "development-branch"                 # Dedicated deployment branch
+    ecr_key              = "core-platform-be"                   # References ecr_repositories key above
+    prefetch_images      = ["node:22-alpine"]                   # Pre-pull to avoid Docker Hub rate limits
+    manifest_file_path   = "deployments/stg-core-platform-be"   # Path in k8s-manifest repo to update
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
     custom_post_build_commands = [
       "echo Build completed on `date`",
       "echo Pushing the Docker images...",
@@ -676,16 +690,16 @@ codepipelines = {
   # k8s path   : deployments/stg-core-platform-fe in k8s-manifest repo
   # ------------------------------------------------------------------
   core-platform-fe = {
-    repository_id      = "india-accelerator/core-platform-fe" # Full GitHub org/repo path
-    branch_name        = "development-branch"                 # Dedicated deployment branch
-    ecr_key            = "core-platform-fe"                   # References ecr_repositories key above
-    prefetch_images    = ["node:22-bullseye"]                 # Pre-pull to avoid Docker Hub rate limits
-    manifest_file_path = "deployments/stg-core-platform-fe"   # Path in k8s-manifest repo to update
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
-    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    repository_id        = "india-accelerator/core-platform-fe" # Full GitHub org/repo path
+    branch_name          = "development-branch"                 # Dedicated deployment branch
+    ecr_key              = "core-platform-fe"                   # References ecr_repositories key above
+    prefetch_images      = ["node:22-bullseye"]                 # Pre-pull to avoid Docker Hub rate limits
+    manifest_file_path   = "deployments/stg-core-platform-fe"   # Path in k8s-manifest repo to update
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/a0fa3689-09c2-43c4-8dc3-0ffc90e7bbb0"
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
     enable_security_scan = true
     build_compute_type   = "BUILD_GENERAL1_MEDIUM"
     build_args = {
@@ -714,14 +728,14 @@ codepipelines = {
   # k8s path   : deployments/stg-coworking-platform-be in k8s-manifest repo
   # ------------------------------------------------------------------
   coworking-platform-be = {
-    repository_id      = "IA-COW/coworking-platform-be"          # Full GitHub org/repo path
-    branch_name        = "develop"                               # Developer push branch
-    ecr_key            = "coworking-platform-be"                 # References ecr_repositories key above
-    prefetch_images    = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
-    manifest_file_path = "deployments/stg-coworking-platform-be" # Path in k8s-manifest repo to update
-    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "IA-COW/coworking-platform-be"          # Full GitHub org/repo path
+    branch_name          = "develop"                               # Developer push branch
+    ecr_key              = "coworking-platform-be"                 # References ecr_repositories key above
+    prefetch_images      = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
+    manifest_file_path   = "deployments/stg-coworking-platform-be" # Path in k8s-manifest repo to update
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
       DB_DATABASE = "cow_dev_db"
@@ -777,16 +791,16 @@ codepipelines = {
   # k8s path   : deployments/stg-coworking-platform-fe in k8s-manifest repo
   # ------------------------------------------------------------------
   coworking-platform-fe = {
-    repository_id      = "IA-COW/coworking-platform-fe"          # Full GitHub org/repo path
-    branch_name        = "develop"                               # Developer push branch
-    ecr_key            = "coworking-platform-fe"                 # References ecr_repositories key above
-    prefetch_images    = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
-    manifest_file_path = "deployments/stg-coworking-platform-fe" # Path in k8s-manifest repo to update
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/5fb5e82a-dcb4-4f0b-b5e5-10ab4496e9af"
-    build_image        = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
-    enable_security_scan = true
+    repository_id              = "IA-COW/coworking-platform-fe"          # Full GitHub org/repo path
+    branch_name                = "develop"                               # Developer push branch
+    ecr_key                    = "coworking-platform-fe"                 # References ecr_repositories key above
+    prefetch_images            = ["node:20-alpine"]                      # Pre-pull to avoid Docker Hub rate limits
+    manifest_file_path         = "deployments/stg-coworking-platform-fe" # Path in k8s-manifest repo to update
+    connection_arn             = "arn:aws:codeconnections:ap-south-1:344367180480:connection/5fb5e82a-dcb4-4f0b-b5e5-10ab4496e9af"
+    build_image                = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace            = "StagingBuildNamespace"
+    exported_variables         = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan       = true
     security_scan_compute_type = "BUILD_GENERAL1_MEDIUM"
     build_args = {
       API_URL             = "https://cow-dev-be.indiaaccelerator.co/api"
@@ -804,16 +818,16 @@ codepipelines = {
   # Branch     : staging
   # ------------------------------------------------------------------
   prosper-be = {
-    repository_id      = "prosper-wealth/prosper-be"
-    branch_name        = "staging"
-    ecr_key            = "prosper-be"
-    prefetch_images    = ["node:22-alpine"]
-    manifest_file_path = "deployments/stg-prosper-be"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "prosper-wealth/prosper-be"
+    branch_name          = "staging"
+    ecr_key              = "prosper-be"
+    prefetch_images      = ["node:22-alpine"]
+    manifest_file_path   = "deployments/stg-prosper-be"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     custom_post_build_commands = [
       "echo Build completed on `date`",
       "echo Pushing the Docker images...",
@@ -850,16 +864,16 @@ codepipelines = {
   # Branch     : staging
   # ------------------------------------------------------------------
   prosper-fe = {
-    repository_id      = "prosper-wealth/prosper-fe"
-    branch_name        = "staging"
-    ecr_key            = "prosper-fe"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-prosper-fe"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "prosper-wealth/prosper-fe"
+    branch_name          = "staging"
+    ecr_key              = "prosper-fe"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-prosper-fe"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     build_args = {
       VITE_API_URL = "https://staging-api.finvica.com/api/v1"
     }
@@ -876,16 +890,16 @@ codepipelines = {
   # Branch     : staging
   # ------------------------------------------------------------------
   faas-be = {
-    repository_id      = "prosper-wealth/faas-be"
-    branch_name        = "staging"
-    ecr_key            = "faas-be"
-    prefetch_images    = ["node:22-alpine"]
-    manifest_file_path = "deployments/stg-faas-be"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "prosper-wealth/faas-be"
+    branch_name          = "staging"
+    ecr_key              = "faas-be"
+    prefetch_images      = ["node:22-alpine"]
+    manifest_file_path   = "deployments/stg-faas-be"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     custom_post_build_commands = [
       "echo Build completed on `date`",
       "echo Pushing the Docker images...",
@@ -922,16 +936,16 @@ codepipelines = {
   # Branch     : staging
   # ------------------------------------------------------------------
   faas-fe = {
-    repository_id      = "prosper-wealth/faas-fe"
-    branch_name        = "staging"
-    ecr_key            = "faas-fe"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-faas-fe"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "prosper-wealth/faas-fe"
+    branch_name          = "staging"
+    ecr_key              = "faas-fe"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-faas-fe"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
-    connection_arn     = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     build_args = {
       VITE_API_URL = "https://staging-faas-api.finvica.com/api/v1"
     }
@@ -949,14 +963,14 @@ codepipelines = {
   # Destination: ECR (subscriber-fe) & k8s-manifests (deployments/stg-subscriber-fe)
   # ------------------------------------------------------------------
   subscriber-fe = {
-    repository_id      = "Lawyered-in/subscriber-fe"
-    branch_name        = "staging"
-    ecr_key            = "subscriber-fe"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-subscriber-fe"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/subscriber-fe"
+    branch_name          = "staging"
+    ecr_key              = "subscriber-fe"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-subscriber-fe"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
       VITE_API_URL      = "https://staging-be.lawyered.in/api/v1"
@@ -982,14 +996,14 @@ codepipelines = {
   # Destination: ECR (lawyered-be) & k8s-manifests (deployments/stg-lawyered-be)
   # ------------------------------------------------------------------
   lawyered-be = {
-    repository_id      = "Lawyered-in/lawyered-be"
-    branch_name        = "staging"
-    ecr_key            = "lawyered-be"
-    prefetch_images    = ["node:20-alpine"]
-    manifest_file_path = "deployments/stg-lawyered-be"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/lawyered-be"
+    branch_name          = "staging"
+    ecr_key              = "lawyered-be"
+    prefetch_images      = ["node:20-alpine"]
+    manifest_file_path   = "deployments/stg-lawyered-be"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     custom_post_build_commands = [
       "echo Build completed on `date`",
@@ -1028,14 +1042,14 @@ codepipelines = {
   # Destination: ECR (laravel-api) & k8s-manifests (deployments/stg-laravel-api)
   # ------------------------------------------------------------------
   laravel-api = {
-    repository_id      = "Lawyered-in/laravel-api"
-    branch_name        = "staging"
-    ecr_key            = "laravel-api"
-    prefetch_images    = ["node:18-alpine", "php:8.1-cli-alpine"]
-    manifest_file_path = "deployments/stg-laravel-api"
-    build_image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace    = "StagingBuildNamespace"
-    exported_variables = ["IMAGE_TAG", "REPOS_URL"]
+    repository_id        = "Lawyered-in/laravel-api"
+    branch_name          = "staging"
+    ecr_key              = "laravel-api"
+    prefetch_images      = ["node:18-alpine", "php:8.1-cli-alpine"]
+    manifest_file_path   = "deployments/stg-laravel-api"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     custom_post_build_commands = [
       "echo Build completed on `date`",
@@ -1059,6 +1073,54 @@ codepipelines = {
       "cd /tmp/k8s-manifest && git add deployments/stg-laravel-api/deployment.yaml deployments/stg-laravel-api/migration-job.yaml",
       "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
       "cd /tmp/k8s-manifest && git push origin staging"
+    ]
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # challanpay-react Pipeline
+  # Manages CI/CD for challanpay-react (Vite React SPA served by Nginx).
+  # Source: Lawyered-in/challanpay-react (staging branch)
+  # Destination: ECR (challanpay-react) & k8s-manifests (deployments/stg-challanpay-react)
+  # VITE_* vars are baked into the JS bundle at Docker build time.
+  # ------------------------------------------------------------------
+  challanpay-react = {
+    repository_id        = "Lawyered-in/challanpay-react"
+    branch_name          = "staging"
+    ecr_key              = "challanpay-react"
+    prefetch_images      = ["node:22-alpine", "nginx:1.27-alpine"]
+    manifest_file_path   = "deployments/stg-challanpay-react"
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    build_args = {
+      VITE_API_BASE_URL           = "/cpapi"
+      BACKEND_BASE_URL            = "https://lawyered.in/api/v1"
+      VITE_RAZORPAY_KEY           = "rzp_test_SgdWRmqPPz7dIA"
+      VITE_MOENGAGE_APP_ID        = "QXZHRWGDAYS9LWCRKWXTV52D"
+      VITE_MOENGAGE_CLUSTER       = "DC_3"
+      VITE_SENTRY_DSN             = "https://8f3c2d7a91b84e6ab5d2f7c9e1a4b6d@o123456.ingest.sentry.io/9876543"
+      VITE_DATADOG_APPLICATION_ID = "47b1cb89-6fb9-49d2-8418-74f278cee79c"
+      VITE_DATADOG_CLIENT_TOKEN   = "puba2d4a609a74d1a803adca77ced5dd3d3"
+      VITE_DATADOG_SITE           = "us5.datadoghq.com"
+      VITE_DATADOG_ENV            = "production"
+      VITE_GA4_MEASUREMENT_ID     = "G-DNDWWVFWG9"
+      VITE_META_PIXEL_ID          = "1131279109198514"
+      VITE_CLARITY_PROJECT_ID     = "unaw091dft"
+      VITE_PAYMENT_HISTORY_PATH   = "random-stuffs"
+      LAWYERED_CHALLAN_TOKEN      = "jGyrVfzf2XSFvCA9jNg9sItzctEHjhjqNX3g98JwfYxqIQI7E3plnG9xIcX1QsKLbK2mjTYOeBzN83j9qbZepjWM35Ei4Eu9v6MX"
+
+    }
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the Docker image with VITE_* build args...",
+      "docker build --build-arg VITE_API_BASE_URL=$${VITE_API_BASE_URL} --build-arg BACKEND_BASE_URL=$${BACKEND_BASE_URL} --build-arg VITE_RAZORPAY_KEY=$${VITE_RAZORPAY_KEY} --build-arg VITE_MOENGAGE_APP_ID=$${VITE_MOENGAGE_APP_ID} --build-arg VITE_MOENGAGE_CLUSTER=$${VITE_MOENGAGE_CLUSTER} --build-arg VITE_SENTRY_DSN=$${VITE_SENTRY_DSN} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_GA4_MEASUREMENT_ID=$${VITE_GA4_MEASUREMENT_ID} --build-arg VITE_META_PIXEL_ID=$${VITE_META_PIXEL_ID} --build-arg VITE_CLARITY_PROJECT_ID=$${VITE_CLARITY_PROJECT_ID} --build-arg VITE_PAYMENT_HISTORY_PATH=$${VITE_PAYMENT_HISTORY_PATH} --build-arg LAWYERED_CHALLAN_TOKEN=$${LAWYERED_CHALLAN_TOKEN} -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
     tags = {
       Environment = "stage"

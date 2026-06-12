@@ -418,6 +418,7 @@ locals {
     "admin-lawyered-fe",
     "api-challans",
     "challanpay-fe-next",
+    "challanpay-react",
     "core-platform-fe",
     "coworking-platform-fe",
     "faas-be",

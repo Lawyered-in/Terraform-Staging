@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-challanpay-react
+  namespace: stg
+  labels:
+    app: stg-challanpay-react
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-challanpay-react
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-challanpay-react
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stg-challanpay-react
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/challanpay-react:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          # Note: VITE_* vars are baked in at Docker build time (--build-arg).
+          # No runtime secrets needed — all env vars are client-side publishable tokens.
+          envFrom:
+            - secretRef:
+                name: challanpay-react-secret
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3

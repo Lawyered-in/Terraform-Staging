@@ -40,3 +40,15 @@ spec:
               name: stg-qr-api
               port:
                 number: 80
+
+  # ── staging-react.challanpay.in ───────────────────────────────────────────
+  - host: staging-react.challanpay.in
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: stg-challanpay-react
+              port:
+                number: 80
