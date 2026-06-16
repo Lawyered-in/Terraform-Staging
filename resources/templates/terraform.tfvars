@@ -454,7 +454,7 @@ codepipelines = {
       VITE_METABASE_SECRET_KEY           = "8eefb6e77d200ec5a212876a7cafdd15c9534bd69986dd4c5"
       VITE_METABASE_SITE_URL             = "https://analytics.lawyered.in"
       VITE_METABASE_TOKEN_EXPIRY_SECONDS = "600"
-      VITE_API_NEW_URL                   = "https://be.lawyered.in/api/v1"
+      VITE_API_NEW_URL                   = "https://staging-be.lawyered.in/api/v1"
     }
     custom_build_commands = [
       "echo Build started on `date`",
@@ -549,6 +549,22 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    build_args = {
+      VITE_API_BASE_URL          = "https://staging.lawyered.in/api/v1"
+      VITE_API_STATE_CITY        = "https://lawyered.in"
+      VITE_DATADOG_APPLICATION_ID = "3a43a4cc-08ae-4dd6-99f5-cb77ee09604f"
+      VITE_DATADOG_CLIENT_TOKEN  = "pub06db028bea9467dc67b000ebd733d2e8"
+      VITE_DATADOG_SITE          = "us5.datadoghq.com"
+      VITE_MOENGAGE_APP_ID       = "QXZHRWGDAYS9LWCRKWXTV52D"
+      VITE_OVERVIEW_BASE_URL     = "https://lawyered.in/uploads/location-files"
+      VITE_QR_LOGO_URL           = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/qr-logo.svg"
+    }
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the Docker image with VITE_* build args...",
+      "docker build --build-arg VITE_API_BASE_URL=$${VITE_API_BASE_URL} --build-arg VITE_API_STATE_CITY=$${VITE_API_STATE_CITY} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_MOENGAGE_APP_ID=$${VITE_MOENGAGE_APP_ID} --build-arg VITE_OVERVIEW_BASE_URL=$${VITE_OVERVIEW_BASE_URL} --build-arg VITE_QR_LOGO_URL=$${VITE_QR_LOGO_URL} -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -1114,6 +1130,7 @@ codepipelines = {
       VITE_CLARITY_PROJECT_ID     = "unaw091dft"
       VITE_PAYMENT_HISTORY_PATH   = "random-stuffs"
       LAWYERED_CHALLAN_TOKEN      = "jGyrVfzf2XSFvCA9jNg9sItzctEHjhjqNX3g98JwfYxqIQI7E3plnG9xIcX1QsKLbK2mjTYOeBzN83j9qbZepjWM35Ei4Eu9v6MX"
+      RAZORPAY_ORDER_ORIGIN       = "https://lawyered.in"
 
     }
     custom_build_commands = [
