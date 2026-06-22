@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lawyered Staging — Deployment Architecture Overview</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+      --primary: #1a56db;
+      --primary-light: #e8eefb;
+      --accent: #0e9f6e;
+      --accent-light: #def7ec;
+      --danger: #e02424;
+      --danger-light: #fde8e8;
+      --warning: #e3a008;
+      --warning-light: #fdf6b2;
+      --dark: #111827;
+      --gray-700: #374151;
+      --gray-600: #4b5563;
+      --gray-500: #6b7280;
+      --gray-400: #9ca3af;
+      --gray-200: #e5e7eb;
+      --gray-100: #f3f4f6;
+      --gray-50: #f9fafb;
+      --white: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--gray-700);
+      line-height: 1.7;
+      font-size: 11pt;
+      background: var(--white);
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 50px;
+    }
+
+    /* Cover Page */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 90vh;
+      text-align: center;
+      page-break-after: always;
+      border-bottom: 4px solid var(--primary);
+      padding-bottom: 40px;
+    }
+
+    .cover-badge {
+      display: inline-block;
+      background: var(--primary);
+      color: white;
+      padding: 6px 20px;
+      border-radius: 20px;
+      font-size: 11pt;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+    }
+
+    .cover h1 {
+      font-size: 32pt;
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .cover h1 span {
+      color: var(--primary);
+    }
+
+    .cover .subtitle {
+      font-size: 14pt;
+      color: var(--gray-500);
+      font-weight: 400;
+      margin-bottom: 50px;
+    }
+
+    .cover-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 40px;
+      text-align: left;
+      background: var(--gray-50);
+      padding: 24px 32px;
+      border-radius: 12px;
+      border: 1px solid var(--gray-200);
+      font-size: 10pt;
+    }
+
+    .cover-meta dt {
+      font-weight: 600;
+      color: var(--gray-500);
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .cover-meta dd {
+      color: var(--dark);
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    /* Section Headers */
+    h2 {
+      font-size: 18pt;
+      font-weight: 700;
+      color: var(--dark);
+      margin-top: 36px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--primary);
+      page-break-after: avoid;
+    }
+
+    h2 .section-num {
+      color: var(--primary);
+      margin-right: 8px;
+    }
+
+    h3 {
+      font-size: 13pt;
+      font-weight: 600;
+      color: var(--dark);
+      margin-top: 24px;
+      margin-bottom: 10px;
+      page-break-after: avoid;
+    }
+
+    h4 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: var(--gray-600);
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin-bottom: 12px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+
+    thead th {
+      background: var(--dark);
+      color: var(--white);
+      font-weight: 600;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 9pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    thead th:first-child { border-radius: 6px 0 0 0; }
+    thead th:last-child { border-radius: 0 6px 0 0; }
+
+    tbody td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    tbody tr:nth-child(even) { background: var(--gray-50); }
+    tbody tr:hover { background: var(--primary-light); }
+
+    /* Code */
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 9pt;
+      background: var(--gray-100);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--danger);
+    }
+
+    pre {
+      background: var(--dark);
+      color: #e5e7eb;
+      padding: 16px 20px;
+      border-radius: 8px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 9pt;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin: 12px 0 20px;
+      page-break-inside: avoid;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+    }
+
+    /* Callouts */
+    .callout {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 14px 0;
+      border-left: 4px solid;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+
+    .callout-note {
+      background: var(--primary-light);
+      border-color: var(--primary);
+    }
+
+    .callout-important {
+      background: var(--warning-light);
+      border-color: var(--warning);
+    }
+
+    .callout-warning {
+      background: var(--danger-light);
+      border-color: var(--danger);
+    }
+
+    .callout-tip {
+      background: var(--accent-light);
+      border-color: var(--accent);
+    }
+
+    .callout strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 9pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Flow Diagrams (ASCII/Box style) */
+    .flow-diagram {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 14px 0;
+      text-align: center;
+      font-family: 'SF Mono', monospace;
+      font-size: 9pt;
+      page-break-inside: avoid;
+    }
+
+    .flow-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin: 8px 0;
+      flex-wrap: wrap;
+    }
+
+    .flow-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 9pt;
+      font-family: 'Inter', sans-serif;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .flow-arrow {
+      color: var(--gray-400);
+      font-size: 16pt;
+      font-weight: 700;
+    }
+
+    .flow-arrow-down {
+      display: block;
+      text-align: center;
+      color: var(--gray-400);
+      font-size: 16pt;
+      font-weight: 700;
+      margin: 4px 0;
+    }
+
+    .bg-green { background: #d1fae5; color: #065f46; }
+    .bg-blue { background: #dbeafe; color: #1e40af; }
+    .bg-orange { background: #ffedd5; color: #9a3412; }
+    .bg-purple { background: #ede9fe; color: #5b21b6; }
+    .bg-red { background: #fce7f3; color: #9d174d; }
+    .bg-cyan { background: #cffafe; color: #155e75; }
+    .bg-gray { background: #e5e7eb; color: #374151; }
+
+    /* Tree Structure */
+    .tree {
+      font-family: 'SF Mono', monospace;
+      font-size: 9pt;
+      line-height: 1.8;
+      background: var(--gray-50);
+      padding: 16px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+      margin: 12px 0;
+    }
+
+    .tree-comment { color: var(--gray-400); font-style: italic; }
+
+    /* List */
+    ul, ol {
+      margin: 8px 0 12px 24px;
+    }
+
+    li { margin-bottom: 4px; }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 8pt;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-be { background: #dbeafe; color: #1e40af; }
+    .badge-fe { background: #d1fae5; color: #065f46; }
+
+    /* Horizontal Rule */
+    hr {
+      border: none;
+      border-top: 1px solid var(--gray-200);
+      margin: 30px 0;
+    }
+
+    /* Print Styles */
+    @media print {
+      body { font-size: 10pt; }
+      .page { padding: 20px 30px; }
+      .cover { min-height: 85vh; }
+      h2 { margin-top: 24px; }
+      table { font-size: 8.5pt; }
+      .flow-box { font-size: 8pt; padding: 8px 12px; }
+      pre { font-size: 8pt; }
+    }
+
+    @page {
+      size: A4;
+      margin: 20mm 15mm;
+    }
+
+    /* TOC */
+    .toc {
+      page-break-after: always;
+    }
+
+    .toc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .toc-list li {
+      padding: 8px 0;
+      border-bottom: 1px dotted var(--gray-200);
+      font-size: 11pt;
+    }
+
+    .toc-list li span {
+      color: var(--primary);
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .section { page-break-before: auto; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ==================== COVER PAGE ==================== -->
+  <div class="cover">
+    <div class="cover-badge">Confidential — Internal Use</div>
+    <h1>Lawyered Staging<br/><span>Deployment Architecture</span></h1>
+    <p class="subtitle">Complete Infrastructure & CI/CD Overview for Developers</p>
+    <dl class="cover-meta">
+      <dt>Document Version</dt>
+      <dd>1.0</dd>
+      <dt>Date</dt>
+      <dd>June 18, 2026</dd>
+      <dt>AWS Account</dt>
+      <dd>344367180480</dd>
+      <dt>Region</dt>
+      <dd>ap-south-1 (Mumbai)</dd>
+      <dt>Environment</dt>
+      <dd>Staging</dd>
+      <dt>Managed By</dt>
+      <dd>Terraform IaC</dd>
+    </dl>
+  </div>
+
+  <!-- ==================== TABLE OF CONTENTS ==================== -->
+  <div class="toc">
+    <h2><span class="section-num">📑</span> Table of Contents</h2>
+    <ul class="toc-list">
+      <li><span>1</span> Executive Summary</li>
+      <li><span>2</span> High-Level Architecture</li>
+      <li><span>3</span> Network Architecture (VPC)</li>
+      <li><span>4</span> EKS Cluster</li>
+      <li><span>5</span> Database Layer</li>
+      <li><span>6</span> Microservices Inventory (19 Services)</li>
+      <li><span>7</span> CI/CD Pipeline Architecture</li>
+      <li><span>8</span> Production Promotion Flow</li>
+      <li><span>9</span> Secrets Management</li>
+      <li><span>10</span> Terraform State & Module Structure</li>
+      <li><span>11</span> AWS Bedrock Integration</li>
+      <li><span>12</span> End-to-End Deployment Walkthrough</li>
+      <li><span>13</span> Key URLs & Endpoints</li>
+      <li><span>14</span> Tagging Convention</li>
+      <li><span>15</span> Quick Reference for Developers</li>
+    </ul>
+  </div>
+
+  <!-- ==================== SECTION 1 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">1.</span> Executive Summary</h2>
+    <p>
+      The Lawyered staging environment runs on <strong>AWS</strong> and is fully managed via <strong>Terraform</strong> (Infrastructure as Code).
+      The platform hosts <strong>19 microservices</strong> across 4 GitHub organizations, deployed into an <strong>Amazon EKS</strong> cluster
+      using a <strong>GitOps</strong> workflow powered by <strong>Argo CD</strong>.
+    </p>
+    <p>
+      CI/CD is handled by <strong>AWS CodePipeline + CodeBuild</strong>, with Docker images stored in <strong>Amazon ECR</strong>.
+      Secrets are managed through <strong>AWS Secrets Manager</strong> with <strong>External Secrets Operator (ESO)</strong> syncing them
+      into Kubernetes. All pipelines include an optional <strong>DevSecOps security scanning</strong> stage.
+    </p>
+  </div>
+
+  <!-- ==================== SECTION 2 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">2.</span> High-Level Architecture</h2>
+
+    <div class="flow-diagram">
+      <p style="font-weight:700; margin-bottom:16px; font-size:11pt; color:#111827;">Architecture Overview — Staging Environment</p>
+
+      <div class="flow-row">
+        <div class="flow-box bg-green">👨‍💻 Developer</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-gray">GitHub<br/>(4 Orgs)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-blue">CodePipeline<br/>(19 Pipelines)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-orange">CodeBuild<br/>(Docker Build)</div>
+      </div>
+
+      <div class="flow-arrow-down">↓</div>
+
+      <div class="flow-row">
+        <div class="flow-box bg-purple">ECR<br/>(19 Repos)</div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-box bg-orange">CodeBuild</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-red">k8s-manifest<br/>(Git Push)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-cyan">ArgoCD<br/>(Auto-Sync)</div>
+      </div>
+
+      <div class="flow-arrow-down">↓</div>
+
+      <div class="flow-row">
+        <div class="flow-box bg-blue" style="min-width: 200px;">EKS Cluster (eks-cluster-np)<br/>K8s 1.35 — Namespace: stg</div>
+      </div>
+
+      <div style="margin-top: 16px; display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
+        <div class="flow-box bg-purple" style="min-width:auto;">Aurora MySQL</div>
+        <div class="flow-box bg-purple" style="min-width:auto;">RDS PostgreSQL (×3)</div>
+        <div class="flow-box bg-orange" style="min-width:auto;">Secrets Manager + ESO</div>
+        <div class="flow-box bg-cyan" style="min-width:auto;">Redis (×7)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 3 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">3.</span> Network Architecture (VPC)</h2>
+    <p>A single VPC hosts all staging resources across 3 Availability Zones:</p>
+
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>VPC Name</strong></td><td><code>stg-mb-vpc01</code></td></tr>
+        <tr><td><strong>CIDR Block</strong></td><td><code>10.100.0.0/16</code></td></tr>
+        <tr><td><strong>NAT Gateway</strong></td><td>Single NAT in <code>stg-mb-public-subnet01</code></td></tr>
+        <tr><td><strong>VPC Flow Logs</strong></td><td>Enabled → S3 bucket <code>stg-mb-vpc01-flow-logs</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Subnet Layout</h3>
+    <table>
+      <thead><tr><th>Type</th><th>Name</th><th>CIDR</th><th>AZ</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Public</strong></td><td>stg-mb-public-subnet01</td><td>10.100.0.0/24</td><td>ap-south-1a</td></tr>
+        <tr><td><strong>Public</strong></td><td>stg-mb-public-subnet02</td><td>10.100.16.0/24</td><td>ap-south-1b</td></tr>
+        <tr><td><strong>Public</strong></td><td>stg-mb-public-subnet03</td><td>10.100.32.0/24</td><td>ap-south-1c</td></tr>
+        <tr><td><strong>Private (App)</strong></td><td>stg-mb-app-subnet01</td><td>10.100.48.0/23</td><td>ap-south-1a</td></tr>
+        <tr><td><strong>Private (App)</strong></td><td>stg-mb-app-subnet02</td><td>10.100.64.0/23</td><td>ap-south-1b</td></tr>
+        <tr><td><strong>Private (App)</strong></td><td>stg-mb-app-subnet03</td><td>10.100.80.0/23</td><td>ap-south-1c</td></tr>
+        <tr><td><strong>Database</strong></td><td>stg-mb-database-subnet01</td><td>10.100.96.0/24</td><td>ap-south-1a</td></tr>
+        <tr><td><strong>Database</strong></td><td>stg-mb-database-subnet02</td><td>10.100.112.0/24</td><td>ap-south-1b</td></tr>
+        <tr><td><strong>Database</strong></td><td>stg-mb-database-subnet03</td><td>10.100.128.0/24</td><td>ap-south-1c</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-note">
+      <strong>📝 Note</strong>
+      The EKS cluster and nodes run in <strong>private subnets</strong>. Only the ALB ingress and databases with <code>publicly_accessible = true</code> are in public subnets.
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 4 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">4.</span> EKS Cluster</h2>
+
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cluster Name</strong></td><td><code>eks-cluster-np</code></td></tr>
+        <tr><td><strong>Kubernetes Version</strong></td><td>1.35</td></tr>
+        <tr><td><strong>API Endpoint</strong></td><td>Private + Public access</td></tr>
+        <tr><td><strong>Node Group</strong></td><td><code>eks-nodegroup-np</code></td></tr>
+        <tr><td><strong>Instance Type</strong></td><td><code>m6a.large</code> (2 vCPU, 8 GB)</td></tr>
+        <tr><td><strong>Scaling</strong></td><td>Min: 1 &nbsp;|&nbsp; Desired: 3 &nbsp;|&nbsp; Max: 5 (ON_DEMAND)</td></tr>
+        <tr><td><strong>Disk Size</strong></td><td>50 GB per node</td></tr>
+        <tr><td><strong>Log Types</strong></td><td>api, audit, authenticator, controllerManager, scheduler</td></tr>
+      </tbody>
+    </table>
+
+    <h3>EKS Addons & Helm Charts</h3>
+    <ul>
+      <li><strong>Managed Addons:</strong> VPC CNI, CoreDNS, kube-proxy, Metrics Server</li>
+      <li><strong>Cluster Autoscaler:</strong> Deployed via Helm (auto-scales 1 → 5 nodes)</li>
+      <li><strong>Argo CD:</strong> Deployed via Helm (accessible at <code>argocd-staging.lawyered.in</code>)</li>
+      <li><strong>ALB Ingress:</strong> <code>lawyered-ingress-alb</code> using ACM certificate</li>
+    </ul>
+
+    <h3>Bastion Host Access</h3>
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Instance</strong></td><td><code>eks-bastion-jumpbox</code> (t3a.medium, Ubuntu 24.04)</td></tr>
+        <tr><td><strong>Subnet</strong></td><td>Private (<code>stg-mb-app-subnet01</code>)</td></tr>
+        <tr><td><strong>Access</strong></td><td>EC2 Instance Connect Endpoint (EICE) → SSH port 22</td></tr>
+        <tr><td><strong>IAM Policies</strong></td><td>EKS Cluster Policy, SSM Managed Instance Core</td></tr>
+      </tbody>
+    </table>
+
+    <div class="flow-diagram" style="text-align:center;">
+      <div class="flow-row">
+        <div class="flow-box bg-green">👨‍💻 Developer</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-blue">EICE (Port 22)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-orange">Bastion Host</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-purple">EKS API (Port 443)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 5 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">5.</span> Database Layer</h2>
+
+    <h3>Aurora MySQL Cluster</h3>
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cluster ID</strong></td><td><code>lawyered-database</code></td></tr>
+        <tr><td><strong>Engine</strong></td><td>Aurora MySQL 8.0</td></tr>
+        <tr><td><strong>Instance Class</strong></td><td>db.t4g.large</td></tr>
+        <tr><td><strong>Primary AZ</strong></td><td>ap-south-1a</td></tr>
+        <tr><td><strong>Writer Endpoint</strong></td><td><code>lawyered-database.cluster-cj446ammul0i.ap-south-1.rds.amazonaws.com</code></td></tr>
+        <tr><td><strong>Reader Endpoint</strong></td><td><code>lawyered-database.cluster-ro-cj446ammul0i.ap-south-1.rds.amazonaws.com</code></td></tr>
+        <tr><td><strong>Deletion Protection</strong></td><td>✅ Enabled</td></tr>
+      </tbody>
+    </table>
+
+    <h3>RDS PostgreSQL Instances</h3>
+    <table>
+      <thead><tr><th>Instance</th><th>Engine</th><th>Class</th><th>Database</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>core-uat-db</code></td><td>PostgreSQL 18.3</td><td>db.t4g.medium</td><td>core_uat_db</td><td>Core Platform + Coworking UAT</td></tr>
+        <tr><td><code>finvica</code></td><td>PostgreSQL 18.3</td><td>db.t4g.medium</td><td>finvica</td><td>Finvica / Prosper</td></tr>
+        <tr><td><code>lawyered-backend-new</code></td><td>PostgreSQL 18.3</td><td>db.t4g.medium</td><td>lawyered_backend_new</td><td>Lawyered Backend</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-important">
+      <strong>⚠️ Important</strong>
+      RDS passwords for <code>finvica</code> and <code>lawyered-backend-new</code> are managed via <strong>AWS Secrets Manager</strong> (auto-synced from Terraform). All 3 RDS instances are publicly accessible for development convenience.
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 6 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">6.</span> Microservices Inventory</h2>
+
+    <h3>6.1 Application Matrix (19 Services)</h3>
+    <table>
+      <thead><tr><th>#</th><th>Service</th><th>Type</th><th>GitHub Org / Repo</th><th>Branch</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>admin-lawyered</td><td><span class="badge badge-be">BE</span></td><td>Lawyered-in/admin-lawyered</td><td>staging</td></tr>
+        <tr><td>2</td><td>admin-lawyered-fe</td><td><span class="badge badge-fe">FE</span></td><td>Lawyered-in/admin-lawyered-fe</td><td>staging</td></tr>
+        <tr><td>3</td><td>lawyered-be</td><td><span class="badge badge-be">BE</span></td><td>Lawyered-in/lawyered-be</td><td>staging</td></tr>
+        <tr><td>4</td><td>lawyered-in-website</td><td><span class="badge badge-fe">FE</span></td><td>Lawyered-in/lawyered.in-website</td><td>staging</td></tr>
+        <tr><td>5</td><td>laravel-api</td><td><span class="badge badge-be">BE</span></td><td>Lawyered-in/laravel-api</td><td>staging</td></tr>
+        <tr><td>6</td><td>subscriber-fe</td><td><span class="badge badge-fe">FE</span></td><td>Lawyered-in/subscriber-fe</td><td>staging</td></tr>
+        <tr><td>7</td><td>partners-portal-fe</td><td><span class="badge badge-fe">FE</span></td><td>Lawyered-in/partners-portal-fe</td><td>staging</td></tr>
+        <tr><td>8</td><td>challanpay-fe-next</td><td><span class="badge badge-fe">FE</span></td><td>Lawyered-in/challanpay-fe-next</td><td>staging</td></tr>
+        <tr><td>9</td><td>challanpay-react</td><td><span class="badge badge-fe">FE</span></td><td>Lawyered-in/challanpay-react</td><td>staging</td></tr>
+        <tr><td>10</td><td>api-challans</td><td><span class="badge badge-be">BE</span></td><td>Lawyered-in/api-challans</td><td>staging</td></tr>
+        <tr><td>11</td><td>qr-api</td><td><span class="badge badge-be">BE</span></td><td>Lawyered-in/qr-api</td><td>staging</td></tr>
+        <tr><td>12</td><td>core-platform-be</td><td><span class="badge badge-be">BE</span></td><td>india-accelerator/core-platform-be</td><td>development-branch</td></tr>
+        <tr><td>13</td><td>core-platform-fe</td><td><span class="badge badge-fe">FE</span></td><td>india-accelerator/core-platform-fe</td><td>development-branch</td></tr>
+        <tr><td>14</td><td>coworking-platform-be</td><td><span class="badge badge-be">BE</span></td><td>IA-COW/coworking-platform-be</td><td>develop</td></tr>
+        <tr><td>15</td><td>coworking-platform-fe</td><td><span class="badge badge-fe">FE</span></td><td>IA-COW/coworking-platform-fe</td><td>develop</td></tr>
+        <tr><td>16</td><td>prosper-be</td><td><span class="badge badge-be">BE</span></td><td>prosper-wealth/prosper-be</td><td>staging</td></tr>
+        <tr><td>17</td><td>prosper-fe</td><td><span class="badge badge-fe">FE</span></td><td>prosper-wealth/prosper-fe</td><td>staging</td></tr>
+        <tr><td>18</td><td>faas-be</td><td><span class="badge badge-be">BE</span></td><td>prosper-wealth/faas-be</td><td>staging</td></tr>
+        <tr><td>19</td><td>faas-fe</td><td><span class="badge badge-fe">FE</span></td><td>prosper-wealth/faas-fe</td><td>staging</td></tr>
+      </tbody>
+    </table>
+
+    <h3>6.2 Redis Sidecar Instances</h3>
+    <p>Several backend services have dedicated Redis instances deployed via ArgoCD (Bitnami Helm chart):</p>
+    <table>
+      <thead><tr><th>Redis Instance</th><th>For Service</th></tr></thead>
+      <tbody>
+        <tr><td><code>stg-redis</code></td><td>Shared (general purpose)</td></tr>
+        <tr><td><code>stg-admin-lawyered-redis</code></td><td>admin-lawyered</td></tr>
+        <tr><td><code>stg-lawyered-be-redis</code></td><td>lawyered-be</td></tr>
+        <tr><td><code>stg-core-platform-be-redis</code></td><td>core-platform-be</td></tr>
+        <tr><td><code>stg-api-challans-redis</code></td><td>api-challans</td></tr>
+        <tr><td><code>stg-prosper-be-redis</code></td><td>prosper-be</td></tr>
+        <tr><td><code>stg-qr-api-redis</code></td><td>qr-api</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== SECTION 7 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">7.</span> CI/CD Pipeline Architecture</h2>
+
+    <h3>7.1 Pipeline Flow (Per Microservice)</h3>
+    <p>Each microservice has a dedicated <strong>AWS CodePipeline</strong> with the following stages:</p>
+
+    <div class="flow-diagram">
+      <p style="font-weight:700; margin-bottom:16px; font-size:11pt; color:#111827;">CI/CD Pipeline Flow</p>
+      <div class="flow-row">
+        <div class="flow-box bg-green">1️⃣ Source<br/>GitHub Webhook</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-blue">2️⃣ Build<br/>CodeBuild</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-orange">3️⃣ Security Scan<br/>DevSecOps</div>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-row">
+        <div class="flow-box bg-purple">4️⃣ Push to ECR<br/>Docker Image</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-red">5️⃣ Update Manifest<br/>k8s-manifest repo</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-cyan">6️⃣ ArgoCD Sync<br/>Deploy to EKS</div>
+      </div>
+    </div>
+
+    <h3>7.2 Detailed Build Process</h3>
+
+    <h4>Stage 1 — Source</h4>
+    <ul>
+      <li>GitHub webhook triggers pipeline on push to the configured branch</li>
+      <li>Uses AWS CodeConnections (separate connections per GitHub org)</li>
+    </ul>
+
+    <h4>Stage 2 — Build (CodeBuild)</h4>
+    <ol>
+      <li>Pre-pull Docker base images (e.g., <code>node:20-alpine</code>) to avoid Docker Hub rate limits</li>
+      <li>Build Docker image with environment-specific build args (API URLs, keys, etc.)</li>
+      <li>Tag image with <code>latest</code> and unique <code>IMAGE_TAG</code> (commit SHA)</li>
+      <li>Push both tags to ECR</li>
+    </ol>
+
+    <h4>Stage 3 — Security Scan (DevSecOps)</h4>
+    <ul>
+      <li>Enabled on all current services (<code>enable_security_scan = true</code>)</li>
+      <li>Uses dedicated <code>devsecops-role</code> IAM role</li>
+      <li>Reports stored in S3 bucket <code>devsecops-reports-storage-bucket</code></li>
+      <li>Slack alerts via webhook (<code>devsecops/slack-webhook</code> secret)</li>
+    </ul>
+
+    <h4>Stage 4 & 5 — Manifest Update (Post-Build)</h4>
+    <ol>
+      <li>Clone <code>Lawyered-in/k8s-manifest</code> repo (staging branch) using SSH key from Secrets Manager</li>
+      <li>Update <code>deployment.yaml</code> image tag via <code>sed</code></li>
+      <li>Update <code>migration-job.yaml</code> if applicable (backend services with DB migrations)</li>
+      <li>Commit and push changes back to staging branch</li>
+    </ol>
+
+    <h4>Stage 6 — ArgoCD Auto-Sync</h4>
+    <ul>
+      <li>ArgoCD watches <code>k8s-manifest</code> repo (staging branch)</li>
+      <li>Detects manifest changes → auto-syncs with <code>prune: true</code> and <code>selfHeal: true</code></li>
+      <li>Deploys updated pods into <code>stg</code> namespace on EKS</li>
+    </ul>
+
+    <h3>7.3 GitHub Connection ARNs</h3>
+    <table>
+      <thead><tr><th>GitHub Organization</th><th>Connection ARN (Suffix)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Lawyered-in</strong></td><td><code>...57bb41a6...</code> (default connection)</td></tr>
+        <tr><td><strong>india-accelerator</strong></td><td><code>...a0fa3689...</code></td></tr>
+        <tr><td><strong>IA-COW</strong></td><td><code>...5fb5e82a...</code></td></tr>
+        <tr><td><strong>prosper-wealth</strong></td><td><code>...c262ed12...</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== SECTION 8 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">8.</span> Production Promotion Flow</h2>
+    <p>A separate <strong>prod-build-promotion</strong> CodeBuild project handles staging → production image promotion:</p>
+
+    <div class="flow-diagram">
+      <p style="font-weight:700; margin-bottom:16px; font-size:11pt; color:#111827;">Cross-Account Promotion: Staging → Production</p>
+      <div class="flow-row">
+        <div class="flow-box bg-orange">Staging ECR<br/>Account: 344367180480</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-blue">Promotion CodeBuild<br/>(docker pull + retag)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-green">Production ECR<br/>Account: 857277800188</div>
+      </div>
+      <div class="flow-arrow-down">↓</div>
+      <div class="flow-row">
+        <div class="flow-box bg-red">k8s-manifest (main branch)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-cyan">Production ArgoCD</div>
+      </div>
+    </div>
+
+    <h3>Key Details</h3>
+    <ul>
+      <li><strong>Cross-account:</strong> Staging (344367180480) → Production (857277800188)</li>
+      <li>Uses <code>sts:AssumeRole</code> to get <code>ProdECRPushRole</code> credentials in the production account</li>
+      <li>Pulls image from staging ECR, retags, pushes to production ECR</li>
+      <li>Updates <code>k8s-manifest</code> repo <strong>main</strong> branch (staging uses <code>staging</code> branch)</li>
+    </ul>
+  </div>
+
+  <!-- ==================== SECTION 9 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">9.</span> Secrets Management</h2>
+
+    <h3>9.1 Architecture</h3>
+    <div class="flow-diagram">
+      <p style="font-weight:700; margin-bottom:16px; font-size:11pt; color:#111827;">Secrets Flow: Secrets Manager → ESO → Kubernetes</p>
+      <div class="flow-row">
+        <div class="flow-box bg-gray">Terraform</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-orange">AWS Secrets Manager<br/>(staging/* prefix)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-blue">External Secrets<br/>Operator (ESO)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box bg-green">K8s Secrets<br/>(stg namespace)</div>
+      </div>
+      <div style="margin-top: 12px; font-size:9pt; color:#6b7280;">
+        ESO uses IAM Role <code>ESOStagingSharedRole</code> with OIDC federation via ServiceAccount <code>eso-staging-shared</code>
+      </div>
+    </div>
+
+    <h3>9.2 Secret Prefixes</h3>
+    <table>
+      <thead><tr><th>Prefix</th><th>Purpose</th><th>Count</th></tr></thead>
+      <tbody>
+        <tr><td><code>staging/*</code></td><td>Staging app credentials</td><td>14 services</td></tr>
+        <tr><td><code>prod/*</code></td><td>Production app credentials</td><td>5 services</td></tr>
+        <tr><td><code>*-db-secrets</code></td><td>RDS database passwords</td><td>2 (finvica, lawyered-backend-new)</td></tr>
+        <tr><td><code>github-connection-key</code></td><td>SSH key for CodeBuild → GitHub push</td><td>1</td></tr>
+        <tr><td><code>devsecops/slack-webhook</code></td><td>Slack webhook for security alerts</td><td>1</td></tr>
+      </tbody>
+    </table>
+
+    <h3>9.3 ESO Integration Details</h3>
+    <ul>
+      <li><strong>IAM Role:</strong> <code>ESOStagingSharedRole</code> with OIDC federation to EKS</li>
+      <li><strong>IAM Policy:</strong> <code>ESOStagingSecretsPolicy</code> — allows <code>secretsmanager:GetSecretValue</code> on <code>staging/*</code></li>
+      <li><strong>K8s ServiceAccount:</strong> <code>eso-staging-shared</code> in <code>stg</code> namespace, annotated with IAM role ARN</li>
+    </ul>
+  </div>
+
+  <!-- ==================== SECTION 10 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">10.</span> Terraform State & Module Structure</h2>
+
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Backend</strong></td><td>S3</td></tr>
+        <tr><td><strong>Bucket</strong></td><td><code>tf-statefile-npbucket</code></td></tr>
+        <tr><td><strong>Key</strong></td><td><code>state/terraform.tfstate</code></td></tr>
+        <tr><td><strong>Region</strong></td><td>ap-south-1</td></tr>
+        <tr><td><strong>Encryption</strong></td><td>✅ Enabled</td></tr>
+        <tr><td><strong>Locking</strong></td><td>✅ Enabled (use_lockfile)</td></tr>
+        <tr><td><strong>Terraform Version</strong></td><td>≥ 1.5.0</td></tr>
+        <tr><td><strong>AWS Provider</strong></td><td>~> 6.0</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Module Structure</h3>
+    <div class="tree">
+      resources/<br/>
+      ├── modules/<br/>
+      │&nbsp;&nbsp;&nbsp;├── argocd/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># ArgoCD Helm deployment</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── aurora/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Aurora MySQL cluster</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── bedrock/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># AWS Bedrock AI integration</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── codepipeline/ &nbsp;&nbsp;&nbsp;<span class="tree-comment"># CI/CD pipeline + CodeBuild</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── ec2/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># EC2 instances</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── ecr/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Container registries</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── eks/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># EKS cluster + node groups</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── eks-addons/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Managed EKS addons (CNI, CoreDNS)</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── helm-addons/ &nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Cluster autoscaler, etc.</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── iam/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># IAM roles + policies</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── kms/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># KMS encryption keys</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── rds/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># RDS PostgreSQL instances</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── redis/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Redis deployments</span><br/>
+      │&nbsp;&nbsp;&nbsp;├── s3/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># S3 buckets</span><br/>
+      │&nbsp;&nbsp;&nbsp;└── vpc/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># VPC, subnets, routing</span><br/>
+      ├── argocd-manifests/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># 27 ArgoCD Application YAMLs</span><br/>
+      └── templates/<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;├── main.tf &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Root orchestration (1077 lines)</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;├── variables.tf &nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Variable definitions</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;├── terraform.tfvars <span class="tree-comment"># Configuration values</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;├── outputs.tf &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Output definitions</span><br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;└── backend.tf &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># S3 backend config</span>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 11 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">11.</span> AWS Bedrock Integration</h2>
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Model</strong></td><td>MiniMax M2.5 (<code>minimax.minimax-m2.5</code>)</td></tr>
+        <tr><td><strong>Purpose</strong></td><td>DeepSec AI service</td></tr>
+        <tr><td><strong>IAM User</strong></td><td>Auto-created with long-term API credentials</td></tr>
+        <tr><td><strong>Tags</strong></td><td>Environment: stage, Service: deepsec</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== SECTION 12 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">12.</span> End-to-End Deployment Walkthrough</h2>
+    <p>Complete flow from a developer's code push to running pods:</p>
+
+    <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:20px; margin:12px 0; font-size:10pt; page-break-inside:avoid;">
+      <table style="margin:0;">
+        <thead><tr><th>Step</th><th>Action</th><th>System</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1</strong></td><td>Code Push</td><td>GitHub</td><td>Developer pushes to staging/develop/development-branch</td></tr>
+          <tr><td><strong>2</strong></td><td>Webhook Trigger</td><td>CodePipeline</td><td>GitHub webhook fires, pipeline starts</td></tr>
+          <tr><td><strong>3</strong></td><td>Pre-pull Images</td><td>CodeBuild</td><td>Fetch base images (node:20-alpine, etc.) to avoid rate limits</td></tr>
+          <tr><td><strong>4</strong></td><td>Docker Build</td><td>CodeBuild</td><td>Build with env vars (VITE_API_URL, etc.) baked into the image</td></tr>
+          <tr><td><strong>5</strong></td><td>Push to ECR</td><td>ECR</td><td>Push <code>:latest</code> and <code>:&lt;commit-sha&gt;</code> tags</td></tr>
+          <tr><td><strong>6</strong></td><td>Security Scan</td><td>DevSecOps</td><td>Container vulnerability scan, report to S3 + Slack alert</td></tr>
+          <tr><td><strong>7</strong></td><td>Update Manifest</td><td>k8s-manifest</td><td>Clone repo, <code>sed</code> deployment.yaml + migration-job.yaml, git push</td></tr>
+          <tr><td><strong>8</strong></td><td>GitOps Sync</td><td>ArgoCD</td><td>Detects branch change, auto-syncs with prune + selfHeal</td></tr>
+          <tr><td><strong>9</strong></td><td>Rolling Update</td><td>EKS</td><td>New pods pull updated image from ECR</td></tr>
+          <tr><td><strong>10</strong></td><td>Secrets Injection</td><td>ESO</td><td>K8s secrets synced from Secrets Manager via IRSA</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 13 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">13.</span> Key URLs & Endpoints</h2>
+    <table>
+      <thead><tr><th>Service</th><th>URL</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Argo CD Dashboard</strong></td><td>https://argocd-staging.lawyered.in</td></tr>
+        <tr><td><strong>Staging API (Lawyered)</strong></td><td>https://staging.lawyered.in</td></tr>
+        <tr><td><strong>Staging BE (Lawyered)</strong></td><td>https://staging-be.lawyered.in</td></tr>
+        <tr><td><strong>Core Platform API</strong></td><td>https://core-platform-be-dev.indiaaccelerator.co/api</td></tr>
+        <tr><td><strong>Coworking BE</strong></td><td>https://cow-dev-be.indiaaccelerator.co/api</td></tr>
+        <tr><td><strong>Prosper API</strong></td><td>https://staging-api.finvica.com/api/v1</td></tr>
+        <tr><td><strong>FaaS API</strong></td><td>https://staging-faas-api.finvica.com/api/v1</td></tr>
+        <tr><td><strong>Metabase Analytics</strong></td><td>https://analytics.lawyered.in</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== SECTION 14 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">14.</span> Tagging Convention</h2>
+    <table>
+      <thead><tr><th>Tag Key</th><th>Example Values</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>Environment</code></td><td>stage, staging, uat, prod</td><td>Environment identification</td></tr>
+        <tr><td><code>Project</code></td><td>lawyered, prosper-wealth, core, finvica</td><td>Project grouping & cost allocation</td></tr>
+        <tr><td><code>Owner</code></td><td>infra-team</td><td>Ownership</td></tr>
+        <tr><td><code>Service</code></td><td>vpc, eks, pipeline, promotion, security</td><td>Service type classification</td></tr>
+        <tr><td><code>ManagedBy</code></td><td>terraform</td><td>IaC tracking</td></tr>
+        <tr><td><code>Role</code></td><td>database-rds, database-aurora, flow-logs</td><td>Resource purpose</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== SECTION 15 ==================== -->
+  <div class="section">
+    <h2><span class="section-num">15.</span> Quick Reference for Developers</h2>
+
+    <h3>How to Deploy Your Code</h3>
+    <ol>
+      <li><strong>Push</strong> your changes to the correct branch (see Application Matrix, Section 6.1)</li>
+      <li><strong>Monitor</strong> the CodePipeline in AWS Console → CodePipeline</li>
+      <li><strong>Check</strong> ArgoCD at <code>https://argocd-staging.lawyered.in</code> for sync status</li>
+      <li><strong>Verify</strong> your pods: <code>kubectl get pods -n stg | grep &lt;service-name&gt;</code></li>
+    </ol>
+
+    <h3>How to Access the EKS Cluster</h3>
+    <pre><code># 1. Configure AWS SSO credentials
+aws sso login --profile &lt;your-profile&gt;
+
+# 2. Update kubeconfig
+aws eks update-kubeconfig --name eks-cluster-np --region ap-south-1
+
+# 3. Or use bastion (via EICE)
+aws ec2-instance-connect ssh --instance-id i-0bdd7be4291bab7bb</code></pre>
+
+    <h3>How to Check Logs</h3>
+    <pre><code># Pod logs
+kubectl logs -n stg deployment/&lt;service-name&gt; -f
+
+# ArgoCD app status
+kubectl get application -n argo-cd &lt;app-name&gt; -o yaml</code></pre>
+
+    <h3>How to Add a New Microservice</h3>
+    <ol>
+      <li>Create ECR repository entry in <code>terraform.tfvars</code> → <code>ecr_repositories</code></li>
+      <li>Add pipeline config in <code>terraform.tfvars</code> → <code>codepipelines</code></li>
+      <li>Create ArgoCD manifest in <code>resources/argocd-manifests/stg-&lt;service&gt;.yaml</code></li>
+      <li>Add K8s deployment manifests to <code>k8s-manifest</code> repo under <code>deployments/stg-&lt;service&gt;/</code></li>
+      <li>Run <code>terraform plan</code> and <code>terraform apply</code></li>
+    </ol>
+
+    <div class="callout callout-tip">
+      <strong>💡 Tip</strong>
+      Backend services with database migrations should include <code>custom_post_build_commands</code> that update both <code>deployment.yaml</code> and <code>migration-job.yaml</code> in the k8s-manifest repo.
+    </div>
+  </div>
+
+  <hr/>
+  <p style="text-align:center; color:#9ca3af; font-size:9pt; margin-top:20px;">
+    <em>This document was auto-generated from Terraform configuration analysis on June 18, 2026.<br/>
+    For the latest state, refer to the Terraform codebase and <code>terraform plan</code> output.</em>
+  </p>
+
+</div>
+</body>
+</html>

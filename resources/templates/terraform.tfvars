@@ -451,10 +451,17 @@ codepipelines = {
     build_args = {
       VITE_API_URL                       = "https://staging.lawyered.in/api/v3/admin"
       VITE_METABASE_DASHBOARD_ID         = "50"
-      VITE_METABASE_SECRET_KEY           = "8eefb6e77d200ec5a212876a7cafdd15c9534bd69986dd4c5"
+      VITE_METABASE_SECRET_KEY           = "4a875a120d779fdc5f1a9b740a3b21fa28a0c21694371ad23de0fa4cbb59f502"
       VITE_METABASE_SITE_URL             = "https://analytics.lawyered.in"
       VITE_METABASE_TOKEN_EXPIRY_SECONDS = "600"
       VITE_API_NEW_URL                   = "https://staging-be.lawyered.in/api/v1"
+      VITE_RSP_COMMISSION_URL            = "http://staging.lawyered.in/api/admin/partners/rsp-commission"
+      VITE_DATADOG_APP_ID                = "f7125ff3-f1c8-48c3-84a7-045797b6d34f"
+      VITE_DATADOG_CLIENT_TOKEN          = "pubcf63804121a41fd6d485ba37248f3aab"
+      VITE_DATADOG_SITE                  = "us5.datadoghq.com"
+      VITE_DATADOG_SERVICE               = "admin-lawyered-fe"
+      VITE_DATADOG_ENV                   = "development"
+      VITE_DATADOG_VERSION               = "1.0.0"
     }
     custom_build_commands = [
       "echo Build started on `date`",
@@ -552,8 +559,8 @@ codepipelines = {
     build_args = {
       VITE_API_BASE_URL          = "https://staging.lawyered.in/api/v1"
       VITE_API_STATE_CITY        = "https://lawyered.in"
-      VITE_DATADOG_APPLICATION_ID = "3a43a4cc-08ae-4dd6-99f5-cb77ee09604f"
-      VITE_DATADOG_CLIENT_TOKEN  = "pub06db028bea9467dc67b000ebd733d2e8"
+      VITE_DATADOG_APPLICATION_ID = "be478f15-601d-49eb-9568-3d4529e800b9"
+      VITE_DATADOG_CLIENT_TOKEN  = "pub3581edb97eb8bdd70a25888e52aabaf6"
       VITE_DATADOG_SITE          = "us5.datadoghq.com"
       VITE_MOENGAGE_APP_ID       = "QXZHRWGDAYS9LWCRKWXTV52D"
       VITE_OVERVIEW_BASE_URL     = "https://lawyered.in/uploads/location-files"
@@ -991,6 +998,11 @@ codepipelines = {
     build_args = {
       VITE_API_URL      = "https://staging-be.lawyered.in/api/v1"
       VITE_RAZORPAY_KEY = "rzp_test_StsoJuLzSQ0KRb"
+      VITE_DATADOG_APPLICATION_ID ="9d432da4-f593-4b7e-931a-1b0ee31c855c"
+      VITE_DATADOG_CLIENT_TOKEN ="pubea15557b6c45656c024f32591cb6c6c3"
+      VITE_DATADOG_SITE ="us5.datadoghq.com"
+      VITE_DATADOG_SERVICE ="subscriber-dashboard-lots247"
+      VITE_DATADOG_ENV ="development"
     }
     custom_build_commands = [
       "echo Build started on `date`",
@@ -1116,23 +1128,25 @@ codepipelines = {
     enable_security_scan = true
     build_args = {
       VITE_API_BASE_URL           = "/cpapi"
-      BACKEND_BASE_URL            = "https://lawyered.in/api/v1"
-      VITE_RAZORPAY_KEY           = "rzp_test_SgdWRmqPPz7dIA"
+      BACKEND_BASE_URL            = "https://staging.lawyered.in/api/v1"
+      VITE_RAZORPAY_KEY           = "rzp_test_StsoJuLzSQ0KRb"
       VITE_MOENGAGE_APP_ID        = "QXZHRWGDAYS9LWCRKWXTV52D"
+      VITE_MOENGAGE_API_KEY       = "JzBkatmnc6da7Qbx9FOLHcBU"
+      VITE_MOENGAGE_BASE_URL      = "https://api-03.moengage.com"
       VITE_MOENGAGE_CLUSTER       = "DC_3"
       VITE_SENTRY_DSN             = "https://8f3c2d7a91b84e6ab5d2f7c9e1a4b6d@o123456.ingest.sentry.io/9876543"
       VITE_DATADOG_APPLICATION_ID = "47b1cb89-6fb9-49d2-8418-74f278cee79c"
       VITE_DATADOG_CLIENT_TOKEN   = "puba2d4a609a74d1a803adca77ced5dd3d3"
       VITE_DATADOG_SITE           = "us5.datadoghq.com"
-      VITE_DATADOG_ENV            = "production"
-      VITE_GA4_MEASUREMENT_ID     = "G-DNDWWVFWG9"
+      VITE_DATADOG_ENV            = "staging"
+      VITE_GA4_MEASUREMENT_ID     = "G-2YKF6J30Z1"
       VITE_META_PIXEL_ID          = "1131279109198514"
       VITE_CLARITY_PROJECT_ID     = "unaw091dft"
-      VITE_PAYMENT_HISTORY_PATH   = "random-stuffs"
       LAWYERED_CHALLAN_TOKEN      = "jGyrVfzf2XSFvCA9jNg9sItzctEHjhjqNX3g98JwfYxqIQI7E3plnG9xIcX1QsKLbK2mjTYOeBzN83j9qbZepjWM35Ei4Eu9v6MX"
-      RAZORPAY_ORDER_ORIGIN       = "https://lawyered.in"
-
-    }
+      RAZORPAY_ORDER_ORIGIN       = "https://staging.lawyered.in"
+      VITE_PAYMENT_HISTORY_PATH   = "payment-history"
+      VITE_GA4_RSP_MEASUREMENT_ID = "G-D6G4GWDGL9"
+      }
     custom_build_commands = [
       "echo Build started on `date`",
       "echo Building the Docker image with VITE_* build args...",
