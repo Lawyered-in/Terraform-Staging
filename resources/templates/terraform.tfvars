@@ -147,6 +147,16 @@ ecr_repositories = {
       Project     = "lawyered"
     }
   }
+  lots247-in = {
+    name                 = "lots247-in"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
   partners-portal-fe = {
     name                 = "partners-portal-fe"
     image_tag_mutability = "MUTABLE"
@@ -467,6 +477,31 @@ codepipelines = {
       "echo Build started on `date`",
       "echo Building the Docker image...",
       "docker build --build-arg VITE_API_URL=$${VITE_API_URL} --build-arg VITE_METABASE_DASHBOARD_ID=$${VITE_METABASE_DASHBOARD_ID} --build-arg VITE_METABASE_SECRET_KEY=$${VITE_METABASE_SECRET_KEY} --build-arg VITE_METABASE_SITE_URL=$${VITE_METABASE_SITE_URL} --build-arg VITE_METABASE_TOKEN_EXPIRY_SECONDS=$${VITE_METABASE_TOKEN_EXPIRY_SECONDS} --build-arg VITE_NEW_API_URL=$${VITE_API_NEW_URL} -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+  lots247-in = {
+    repository_id        = "Lawyered-in/lots247.com-website"
+    branch_name          = "staging"
+    ecr_key              = "lots247-in"
+    prefetch_images      = ["node:22-alpine"]
+    manifest_file_path   = "deployments/stg-lots247-in.yaml"
+    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    build_args = {
+      VITE_REGISTER_BASE_URL = "https://staging-subscribers.lawyered.in/register"
+    }
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the Docker image with VITE_* build args...",
+      "docker build --build-arg VITE_REGISTER_BASE_URL=$${VITE_REGISTER_BASE_URL} -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
     tags = {

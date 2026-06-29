@@ -425,6 +425,7 @@ locals {
     "faas-fe",
     "laravel-api",
     "lawyered-in-website",
+    "lots247-in",
     "partners-portal-fe",
     "prosper-fe",
     "qr-api",

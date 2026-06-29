@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stg-lots247-in
+  namespace: stg
+  labels:
+    app: stg-lots247-in
+    environment: stg
+spec:
+  type: ClusterIP
+  selector:
+    app: stg-lots247-in
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80

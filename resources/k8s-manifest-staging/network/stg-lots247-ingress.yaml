@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stg-lots247-ingress
+  namespace: stg
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:344367180480:certificate/PLACEHOLDER-ACM-CERTIFICATE-ARN
+    alb.ingress.kubernetes.io/group.name: laweryerd-np-group
+    alb.ingress.kubernetes.io/group.order: "60"
+    alb.ingress.kubernetes.io/success-codes: "200,301,302,404"
+    alb.ingress.kubernetes.io/load-balancer-name: lawyered-ingress-alb
+spec:
+  rules:
+    - host: staging.lots247.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stg-lots247-in
+                port:
+                  number: 80
+
