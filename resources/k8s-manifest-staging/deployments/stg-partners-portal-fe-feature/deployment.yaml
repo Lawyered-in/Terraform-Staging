@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-partners-portal-fe-feature
+  namespace: stg
+  labels:
+    app: stg-partners-portal-fe-feature
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-partners-portal-fe-feature
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-partners-portal-fe-feature
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stg-partners-portal-fe-feature
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/partners-portal-fe-feature:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: partners-portal-fe-feature-secret
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
