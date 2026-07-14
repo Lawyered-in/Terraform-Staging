@@ -60,30 +60,30 @@ variable "ec2_instances" {
 variable "rds_instances" {
   description = "Map of RDS instance configurations. subnet_ids resolved dynamically from VPC module using vpc_key and subnet_keys."
   type = map(object({
-    engine                  = optional(string, "mysql")
-    engine_version          = optional(string, "8.0")
-    instance_class          = optional(string, "db.t3.micro")
-    allocated_storage       = optional(number, 20)
-    max_allocated_storage   = optional(number, 0)
-    storage_type            = optional(string, "gp3")
-    storage_encrypted       = optional(bool, true)
-    db_name                 = string
-    username                = string
-    password                = string
-    vpc_key                 = string
-    subnet_keys             = list(string)
-    vpc_security_group_ids  = optional(list(string), [])
-    multi_az                = optional(bool, false)
-    backup_retention_period = optional(number, 7)
-    deletion_protection     = optional(bool, false)
-    skip_final_snapshot     = optional(bool, true)
-    apply_immediately       = optional(bool, false)
+    engine                      = optional(string, "mysql")
+    engine_version              = optional(string, "8.0")
+    instance_class              = optional(string, "db.t3.micro")
+    allocated_storage           = optional(number, 20)
+    max_allocated_storage       = optional(number, 0)
+    storage_type                = optional(string, "gp3")
+    storage_encrypted           = optional(bool, true)
+    db_name                     = string
+    username                    = string
+    password                    = string
+    vpc_key                     = string
+    subnet_keys                 = list(string)
+    vpc_security_group_ids      = optional(list(string), [])
+    multi_az                    = optional(bool, false)
+    backup_retention_period     = optional(number, 7)
+    deletion_protection         = optional(bool, false)
+    skip_final_snapshot         = optional(bool, true)
+    apply_immediately           = optional(bool, false)
     allow_major_version_upgrade = optional(bool, false)
-    parameter_group_name    = optional(string, null)
-    parameter_group_family  = optional(string, null)
-    publicly_accessible     = optional(bool, false)
-    db_subnet_group_name    = optional(string)
-    tags                    = optional(map(string), {})
+    parameter_group_name        = optional(string, null)
+    parameter_group_family      = optional(string, null)
+    publicly_accessible         = optional(bool, false)
+    db_subnet_group_name        = optional(string)
+    tags                        = optional(map(string), {})
   }))
   default = {}
 }
@@ -250,7 +250,7 @@ variable "codepipelines" {
     enable_security_scan       = optional(bool, false)
     build_compute_type         = optional(string, "BUILD_GENERAL1_SMALL")
     security_scan_compute_type = optional(string, "BUILD_GENERAL1_SMALL")
-    tags = optional(map(string), {})
+    tags                       = optional(map(string), {})
   }))
   description = "Map of CodePipelines to create"
   default     = {}

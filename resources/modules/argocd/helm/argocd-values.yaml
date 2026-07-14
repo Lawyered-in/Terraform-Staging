@@ -8,6 +8,19 @@ configs:
     url: https://argocd-staging.lawyered.in
     # -- Admin login enabled
     admin.enabled: true
+    # -- Background git polling interval (fallback if a webhook delivery is missed)
+    timeout.reconciliation: 180s
+  secret:
+    # -- Shared secret GitHub signs webhook payloads with (must match the
+    #    "Secret" set on the k8s-manifest repo's GitHub webhook)
+    extra:
+      webhook.github.secret: fec63d1ef96f4a4b28a763830d2e9f84f938d53e
+  params:
+    # -- Run server without TLS so it does NOT 307-redirect HTTP->HTTPS.
+    #    TLS is terminated at the ALB; the ALB /healthz check must get a 200,
+    #    not a redirect. In chart v9.x this key (not top-level server.insecure)
+    #    is what actually populates argocd-cmd-params-cm.
+    server.insecure: true
 
 server:
   # -- Run server without TLS (offloaded to LoadBalancer)

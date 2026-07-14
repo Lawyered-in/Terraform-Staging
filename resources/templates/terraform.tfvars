@@ -85,7 +85,7 @@ eks_clusters = {
       eks-nodegroup-np = {
         desired_size   = 3
         min_size       = 1
-        max_size       = 5
+        max_size       = 7
         instance_types = ["m6a.large"]
         capacity_type  = "ON_DEMAND"
         disk_size      = 50
@@ -506,7 +506,8 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_REGISTER_BASE_URL = "https://staging-subscribers.lawyered.in/register"
+      VITE_REGISTER_BASE_URL = "https://staging-dashboard.lots247.in/register"
+      VITE_QR_REDIRECTS      = "sarathi|https://pages.razorpay.com/pl_TAYfPHbjTTlXax/view?product=SARATHI_QR_REGISTRATION"
     }
     custom_build_commands = [
       "echo Build started on `date`",
@@ -602,14 +603,14 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_API_BASE_URL          = "https://staging.lawyered.in/api/v1"
-      VITE_API_STATE_CITY        = "https://lawyered.in"
+      VITE_API_BASE_URL           = "https://staging.lawyered.in/api/v1"
+      VITE_API_STATE_CITY         = "https://lawyered.in"
       VITE_DATADOG_APPLICATION_ID = "be478f15-601d-49eb-9568-3d4529e800b9"
-      VITE_DATADOG_CLIENT_TOKEN  = "pub3581edb97eb8bdd70a25888e52aabaf6"
-      VITE_DATADOG_SITE          = "us5.datadoghq.com"
-      VITE_MOENGAGE_APP_ID       = "QXZHRWGDAYS9LWCRKWXTV52D"
-      VITE_OVERVIEW_BASE_URL     = "https://lawyered.in/uploads/location-files"
-      VITE_QR_LOGO_URL           = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/qr-logo.svg"
+      VITE_DATADOG_CLIENT_TOKEN   = "pub3581edb97eb8bdd70a25888e52aabaf6"
+      VITE_DATADOG_SITE           = "us5.datadoghq.com"
+      VITE_MOENGAGE_APP_ID        = "QXZHRWGDAYS9LWCRKWXTV52D"
+      VITE_OVERVIEW_BASE_URL      = "https://lawyered.in/uploads/location-files"
+      VITE_QR_LOGO_URL            = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/qr-logo.svg"
     }
     custom_build_commands = [
       "echo Build started on `date`",
@@ -634,14 +635,14 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_API_BASE_URL          = "https://staging.lawyered.in/api/v1"
-      VITE_API_STATE_CITY        = "https://lawyered.in"
+      VITE_API_BASE_URL           = "https://staging.lawyered.in/api/v1"
+      VITE_API_STATE_CITY         = "https://lawyered.in"
       VITE_DATADOG_APPLICATION_ID = "be478f15-601d-49eb-9568-3d4529e800b9"
-      VITE_DATADOG_CLIENT_TOKEN  = "pub3581edb97eb8bdd70a25888e52aabaf6"
-      VITE_DATADOG_SITE          = "us5.datadoghq.com"
-      VITE_MOENGAGE_APP_ID       = "QXZHRWGDAYS9LWCRKWXTV52D"
-      VITE_OVERVIEW_BASE_URL     = "https://lawyered.in/uploads/location-files"
-      VITE_QR_LOGO_URL           = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/qr-logo.svg"
+      VITE_DATADOG_CLIENT_TOKEN   = "pub3581edb97eb8bdd70a25888e52aabaf6"
+      VITE_DATADOG_SITE           = "us5.datadoghq.com"
+      VITE_MOENGAGE_APP_ID        = "QXZHRWGDAYS9LWCRKWXTV52D"
+      VITE_OVERVIEW_BASE_URL      = "https://lawyered.in/uploads/location-files"
+      VITE_QR_LOGO_URL            = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/qr-logo.svg"
     }
     custom_build_commands = [
       "echo Build started on `date`",
@@ -1047,9 +1048,9 @@ codepipelines = {
     enable_security_scan = true
     connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     build_args = {
-      NEXT_PUBLIC_API_URL = "https://prosper-api.staging.prosperwealth.ai/v1"
-      NEXT_PUBLIC_ROOT_DOMAIN = "staging.prosperwealth.ai"
-      NEXT_PUBLIC_POSTHOG_KEY = "phc_M1Yh3LvzlZvBrjfqpE3h7IlV7kWAONqIXzgCUMFp24F"
+      NEXT_PUBLIC_API_URL      = "https://prosper-api.staging.prosperwealth.ai/v1"
+      NEXT_PUBLIC_ROOT_DOMAIN  = "staging.prosperwealth.ai"
+      NEXT_PUBLIC_POSTHOG_KEY  = "phc_M1Yh3LvzlZvBrjfqpE3h7IlV7kWAONqIXzgCUMFp24F"
       NEXT_PUBLIC_POSTHOG_HOST = "https://us.i.posthog.com"
     }
     tags = {
@@ -1076,13 +1077,13 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_API_URL      = "https://staging-be.lawyered.in/api/v1"
-      VITE_RAZORPAY_KEY = "rzp_test_StsoJuLzSQ0KRb"
-      VITE_DATADOG_APPLICATION_ID ="9d432da4-f593-4b7e-931a-1b0ee31c855c"
-      VITE_DATADOG_CLIENT_TOKEN ="pubea15557b6c45656c024f32591cb6c6c3"
-      VITE_DATADOG_SITE ="us5.datadoghq.com"
-      VITE_DATADOG_SERVICE ="subscriber-dashboard-lots247"
-      VITE_DATADOG_ENV ="development"
+      VITE_API_URL                = "https://staging-be.lawyered.in/api/v1"
+      VITE_RAZORPAY_KEY           = "rzp_test_StsoJuLzSQ0KRb"
+      VITE_DATADOG_APPLICATION_ID = "9d432da4-f593-4b7e-931a-1b0ee31c855c"
+      VITE_DATADOG_CLIENT_TOKEN   = "pubea15557b6c45656c024f32591cb6c6c3"
+      VITE_DATADOG_SITE           = "us5.datadoghq.com"
+      VITE_DATADOG_SERVICE        = "subscriber-dashboard-lots247"
+      VITE_DATADOG_ENV            = "development"
     }
     custom_build_commands = [
       "echo Build started on `date`",
@@ -1226,7 +1227,7 @@ codepipelines = {
       RAZORPAY_ORDER_ORIGIN       = "https://staging.lawyered.in"
       VITE_PAYMENT_HISTORY_PATH   = "payment-history"
       VITE_GA4_RSP_MEASUREMENT_ID = "G-D6G4GWDGL9"
-      }
+    }
     custom_build_commands = [
       "echo Build started on `date`",
       "echo Building the Docker image with VITE_* build args...",

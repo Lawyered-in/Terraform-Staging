@@ -651,7 +651,7 @@ resource "aws_iam_role_policy" "devsecops" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Effect   = "Allow"
+        Effect = "Allow"
         Resource = [
           aws_secretsmanager_secret.slack_webhook.arn,
           aws_secretsmanager_secret.github_ssh_key.arn
@@ -708,29 +708,29 @@ module "codepipeline" {
   source   = "../modules/codepipeline"
   for_each = var.codepipelines
 
-  pipeline_name              = try(coalesce(each.value.pipeline_name, "${each.key}-pipeline"), "${each.key}-pipeline")
-  github_connection_arn      = try(coalesce(each.value.connection_arn, var.github_connection_arn, aws_codeconnections_connection.github.arn), aws_codeconnections_connection.github.arn)
-  repository_id              = each.value.repository_id
-  branch_name                = each.value.branch_name
-  manifest_branch            = each.value.manifest_branch
-  ecr_repository_url         = module.ecr[each.value.ecr_key].repository_url
-  prefetch_images            = each.value.prefetch_images
-  build_args                 = each.value.build_args
-  manifest_file_path         = each.value.manifest_file_path
-  github_token_secret_name   = try(coalesce(each.value.github_token_secret_name, var.global_github_token_secret_name), var.global_github_token_secret_name)
-  build_image                = coalesce(each.value.build_image, "aws/codebuild/amazonlinux2-x86_64-standard:5.0")
-  extra_stages               = each.value.extra_stages != null ? each.value.extra_stages : []
-  build_namespace            = each.value.build_namespace
-  exported_variables         = each.value.exported_variables
-  custom_pre_build_commands  = each.value.custom_pre_build_commands
-  custom_build_commands      = each.value.custom_build_commands
-  custom_post_build_commands = each.value.custom_post_build_commands
-  enable_security_scan       = try(each.value.enable_security_scan, false)
-  security_scan_role_arn     = aws_iam_role.devsecops_role.arn
+  pipeline_name                = try(coalesce(each.value.pipeline_name, "${each.key}-pipeline"), "${each.key}-pipeline")
+  github_connection_arn        = try(coalesce(each.value.connection_arn, var.github_connection_arn, aws_codeconnections_connection.github.arn), aws_codeconnections_connection.github.arn)
+  repository_id                = each.value.repository_id
+  branch_name                  = each.value.branch_name
+  manifest_branch              = each.value.manifest_branch
+  ecr_repository_url           = module.ecr[each.value.ecr_key].repository_url
+  prefetch_images              = each.value.prefetch_images
+  build_args                   = each.value.build_args
+  manifest_file_path           = each.value.manifest_file_path
+  github_token_secret_name     = try(coalesce(each.value.github_token_secret_name, var.global_github_token_secret_name), var.global_github_token_secret_name)
+  build_image                  = coalesce(each.value.build_image, "aws/codebuild/amazonlinux2-x86_64-standard:5.0")
+  extra_stages                 = each.value.extra_stages != null ? each.value.extra_stages : []
+  build_namespace              = each.value.build_namespace
+  exported_variables           = each.value.exported_variables
+  custom_pre_build_commands    = each.value.custom_pre_build_commands
+  custom_build_commands        = each.value.custom_build_commands
+  custom_post_build_commands   = each.value.custom_post_build_commands
+  enable_security_scan         = try(each.value.enable_security_scan, false)
+  security_scan_role_arn       = aws_iam_role.devsecops_role.arn
   security_reports_bucket_name = aws_s3_bucket.devsecops_reports.bucket
-  build_compute_type         = each.value.build_compute_type
-  security_scan_compute_type = try(each.value.security_scan_compute_type, "BUILD_GENERAL1_SMALL")
-  tags                       = each.value.tags
+  build_compute_type           = each.value.build_compute_type
+  security_scan_compute_type   = try(each.value.security_scan_compute_type, "BUILD_GENERAL1_SMALL")
+  tags                         = each.value.tags
 }
 
 # -------------------------------------------------------------------
