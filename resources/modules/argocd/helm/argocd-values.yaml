@@ -10,6 +10,9 @@ configs:
     admin.enabled: true
     # -- Background git polling interval (fallback if a webhook delivery is missed)
     timeout.reconciliation: 180s
+    # -- Local accounts (besides built-in 'admin')
+    #    'login' = can log in via UI/CLI
+    accounts.developer: login
   secret:
     # -- Shared secret GitHub signs webhook payloads with (must match the
     #    "Secret" set on the k8s-manifest repo's GitHub webhook)
@@ -21,6 +24,35 @@ configs:
     #    not a redirect. In chart v9.x this key (not top-level server.insecure)
     #    is what actually populates argocd-cmd-params-cm.
     server.insecure: true
+
+  # ---------------------------------------------------------------------------
+  # RBAC – controls what each user/role can see and do
+  # ---------------------------------------------------------------------------
+  rbac:
+    # -- policy.default: role assigned to users that don't match any policy rule.
+    #    Empty string = no access by default (secure). Use 'role:readonly' to
+    #    give every authenticated user read access instead.
+    policy.default: ""
+
+    # -- policy.csv: Casbin-style RBAC rules
+    #    Format: p, <user/role>, <resource>, <action>, <project>/<object>, allow/deny
+    #    Resources: applications, clusters, projects, repositories, logs, exec
+    #    Actions:   get, create, update, delete, sync, override, action, *
+    policy.csv: |
+      # ── role:developer ──────────────────────────────────────────────
+      # Read access to all resources
+      p, role:developer, applications, get, *, allow
+      p, role:developer, projects, get, *, allow
+      p, role:developer, repositories, get, *, allow
+      p, role:developer, clusters, get, *, allow
+      p, role:developer, logs, get, *, allow
+
+      # Sync access (trigger deployments, but cannot create or delete apps)
+      p, role:developer, applications, sync, *, allow
+      p, role:developer, applications, action/*, *, allow
+
+      # Bind the local 'developer' account to role:developer
+      g, developer, role:developer
 
 server:
   # -- Run server without TLS (offloaded to LoadBalancer)

@@ -6,6 +6,8 @@ metadata:
   labels:
     app: stg-admin-lawyered
     environment: stg
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=false
 spec:
   accessModes:
     - ReadWriteOnce
@@ -22,6 +24,8 @@ metadata:
   labels:
     app: stg-admin-lawyered
     environment: stg
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=false
 spec:
   accessModes:
     - ReadWriteOnce

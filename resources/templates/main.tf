@@ -374,11 +374,11 @@ resource "aws_secretsmanager_secret_version" "rds_secrets" {
 
 locals {
   prod_apps = [
-    "core-platform-be",
-    "coworking-platform-be",
     "prosper-be",
     "admin-lawyered",
-    "lawyered-be"
+    "lawyered-be",
+    "core-platform-be",
+    "coworking-platform-be"
   ]
 }
 
@@ -419,8 +419,6 @@ locals {
     "api-challans",
     "challanpay-fe-next",
     "challanpay-react",
-    "core-platform-fe",
-    "coworking-platform-fe",
     "faas-be",
     "faas-fe",
     "laravel-api",
