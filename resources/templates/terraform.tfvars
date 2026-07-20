@@ -207,6 +207,16 @@ ecr_repositories = {
       Project     = "lawyered"
     }
   }
+  challan-screening = {
+    name                 = "challan-screening"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
   qr-api = {
     name                 = "qr-api"
     image_tag_mutability = "MUTABLE"
@@ -631,6 +641,22 @@ codepipelines = {
       "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
       "cd /tmp/k8s-manifest && git push origin staging"
     ]
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+  challan-screening = {
+    repository_id        = "Lawyered-in/challan-screening"
+    branch_name          = "staging"
+    ecr_key              = "challan-screening"
+    prefetch_images      = ["python:3.10-slim"]
+    manifest_file_path   = "deployments/stg-challan-screening"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
     tags = {
       Environment = "stage"
       Project     = "lawyered"

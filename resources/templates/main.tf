@@ -417,6 +417,7 @@ locals {
   stg_apps = [
     "admin-lawyered-fe",
     "api-challans",
+    "challan-screening",
     "challanpay-fe-next",
     "challanpay-react",
     "faas-be",

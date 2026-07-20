@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-challan-screening
+  namespace: stg
+  labels:
+    app: stg-challan-screening
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-challan-screening
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-challan-screening
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: stg-challan-screening
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/challan-screening:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: challan-screening-secret
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
