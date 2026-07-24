@@ -415,7 +415,7 @@ codepipelines = {
     custom_build_commands = [
       "echo Build started on `date`",
       "echo Building the Docker image...",
-      "docker build --build-arg VITE_API_URL=$${VITE_API_URL} --build-arg VITE_METABASE_DASHBOARD_ID=$${VITE_METABASE_DASHBOARD_ID} --build-arg VITE_METABASE_SECRET_KEY=$${VITE_METABASE_SECRET_KEY} --build-arg VITE_METABASE_SITE_URL=$${VITE_METABASE_SITE_URL} --build-arg VITE_METABASE_TOKEN_EXPIRY_SECONDS=$${VITE_METABASE_TOKEN_EXPIRY_SECONDS} --build-arg VITE_NEW_API_URL=$${VITE_API_NEW_URL} -t $REPOS_URL:latest .",
+      "docker build --build-arg VITE_API_URL=$${VITE_API_URL} --build-arg VITE_METABASE_DASHBOARD_ID=$${VITE_METABASE_DASHBOARD_ID} --build-arg VITE_METABASE_SECRET_KEY=$${VITE_METABASE_SECRET_KEY} --build-arg VITE_METABASE_SITE_URL=$${VITE_METABASE_SITE_URL} --build-arg VITE_METABASE_TOKEN_EXPIRY_SECONDS=$${VITE_METABASE_TOKEN_EXPIRY_SECONDS} --build-arg VITE_API_NEW_URL=$${VITE_API_NEW_URL} --build-arg VITE_NEW_API_URL=$${VITE_API_NEW_URL} --build-arg VITE_RSP_COMMISSION_URL=$${VITE_RSP_COMMISSION_URL} --build-arg VITE_DATADOG_APP_ID=$${VITE_DATADOG_APP_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_SERVICE=$${VITE_DATADOG_SERVICE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_DATADOG_VERSION=$${VITE_DATADOG_VERSION} -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
     tags = {
@@ -435,13 +435,26 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_REGISTER_BASE_URL = "https://staging-dashboard.lots247.in/register"
-      VITE_QR_REDIRECTS      = "sarathi|https://pages.razorpay.com/pl_TAYfPHbjTTlXax/view?product=SARATHI_QR_REGISTRATION"
+      VITE_REGISTER_BASE_URL      = "https://staging-dashboard.lots247.in/register"
+      VITE_QR_REDIRECTS           = "sarathi|https://pages.razorpay.com/pl_TAYfPHbjTTlXax/view?product=SARATHI_QR_REGISTRATION"
+      MOENGAGE_API_KEY            = "JzBkatmnc6da7Qbx9FOLHcBU"
+      MOENGAGE_BASE_URL           = "https://api-03.moengage.com"
+      VITE_MOENGAGE_API_KEY       = "JzBkatmnc6da7Qbx9FOLHcBU"
+      VITE_MOENGAGE_BASE_URL      = "https://api-03.moengage.com"
+      VITE_MOENGAGE_CLUSTER       = "DC_3"
+      VITE_DATADOG_APPLICATION_ID = "47b1cb89-6fb9-49d2-8418-74f278cee79c"
+      VITE_DATADOG_CLIENT_TOKEN   = "puba2d4a609a74d1a803adca77ced5dd3d3"
+      VITE_DATADOG_SITE           = "us5.datadoghq.com"
+      VITE_DATADOG_ENV            = "production"
+      VITE_GA4_MEASUREMENT_ID     = "G-DNDWWVFWG9"
+      VITE_META_PIXEL_ID          = "1131279109198514"
+      VITE_CLARITY_PROJECT_ID     = "unaw091dft"
+      VITE_GTM_ID                 = "GTM-PNZZHFT6"
     }
     custom_build_commands = [
       "echo Build started on `date`",
       "echo Building the Docker image with VITE_* build args...",
-      "docker build --build-arg VITE_REGISTER_BASE_URL=$${VITE_REGISTER_BASE_URL} -t $REPOS_URL:latest .",
+      "docker build --build-arg VITE_REGISTER_BASE_URL=$${VITE_REGISTER_BASE_URL} --build-arg VITE_QR_REDIRECTS=$${VITE_QR_REDIRECTS} --build-arg MOENGAGE_API_KEY=$${MOENGAGE_API_KEY} --build-arg MOENGAGE_BASE_URL=$${MOENGAGE_BASE_URL} --build-arg VITE_MOENGAGE_API_KEY=$${VITE_MOENGAGE_API_KEY} --build-arg VITE_MOENGAGE_BASE_URL=$${VITE_MOENGAGE_BASE_URL} --build-arg VITE_MOENGAGE_CLUSTER=$${VITE_MOENGAGE_CLUSTER} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_GA4_MEASUREMENT_ID=$${VITE_GA4_MEASUREMENT_ID} --build-arg VITE_META_PIXEL_ID=$${VITE_META_PIXEL_ID} --build-arg VITE_CLARITY_PROJECT_ID=$${VITE_CLARITY_PROJECT_ID} --build-arg VITE_GTM_ID=$${VITE_GTM_ID} -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
     tags = {
@@ -564,7 +577,7 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_API_BASE_URL           = "https://staging.lawyered.in/api/v1"
+      VITE_API_BASE_URL           = "https://staging-be.lawyered.in/api/v1"
       VITE_API_STATE_CITY         = "https://lawyered.in"
       VITE_DATADOG_APPLICATION_ID = "be478f15-601d-49eb-9568-3d4529e800b9"
       VITE_DATADOG_CLIENT_TOKEN   = "pub3581edb97eb8bdd70a25888e52aabaf6"
@@ -850,11 +863,13 @@ codepipelines = {
       VITE_DATADOG_SITE           = "us5.datadoghq.com"
       VITE_DATADOG_SERVICE        = "subscriber-dashboard-lots247"
       VITE_DATADOG_ENV            = "development"
+      VITE_AI_URL                 = "https://lava-ai-for-lots247.onrender.com"
+      VITE_GTM_ID                 = "GTM-PNZZHFT6"
     }
     custom_build_commands = [
       "echo Build started on `date`",
-      "echo Building the Docker image...",
-      "docker build --build-arg VITE_API_URL=$VITE_API_URL --build-arg VITE_RAZORPAY_KEY_ID=$VITE_RAZORPAY_KEY_ID -t $REPOS_URL:latest .",
+      "echo Building the Docker image with VITE_* build args...",
+      "docker build --build-arg VITE_API_URL=$${VITE_API_URL} --build-arg VITE_RAZORPAY_KEY=$${VITE_RAZORPAY_KEY} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_SERVICE=$${VITE_DATADOG_SERVICE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_AI_URL=$${VITE_AI_URL} --build-arg VITE_GTM_ID=$${VITE_GTM_ID} -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
     tags = {
@@ -974,7 +989,7 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_API_BASE_URL           = "/cpapi"
+      VITE_API_BASE_URL           = "https://staging-be.lawyered.in/api/v1"
       BACKEND_BASE_URL            = "https://staging-be.lawyered.in/api/v1"
       VITE_RAZORPAY_KEY           = "rzp_test_StsoJuLzSQ0KRb"
       VITE_MOENGAGE_APP_ID        = "QXZHRWGDAYS9LWCRKWXTV52D"
@@ -997,7 +1012,7 @@ codepipelines = {
     custom_build_commands = [
       "echo Build started on `date`",
       "echo Building the Docker image with VITE_* build args...",
-      "docker build --build-arg VITE_API_BASE_URL=$${VITE_API_BASE_URL} --build-arg BACKEND_BASE_URL=$${BACKEND_BASE_URL} --build-arg VITE_RAZORPAY_KEY=$${VITE_RAZORPAY_KEY} --build-arg VITE_MOENGAGE_APP_ID=$${VITE_MOENGAGE_APP_ID} --build-arg VITE_MOENGAGE_CLUSTER=$${VITE_MOENGAGE_CLUSTER} --build-arg VITE_SENTRY_DSN=$${VITE_SENTRY_DSN} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_GA4_MEASUREMENT_ID=$${VITE_GA4_MEASUREMENT_ID} --build-arg VITE_META_PIXEL_ID=$${VITE_META_PIXEL_ID} --build-arg VITE_CLARITY_PROJECT_ID=$${VITE_CLARITY_PROJECT_ID} --build-arg VITE_PAYMENT_HISTORY_PATH=$${VITE_PAYMENT_HISTORY_PATH} --build-arg LAWYERED_CHALLAN_TOKEN=$${LAWYERED_CHALLAN_TOKEN} -t $REPOS_URL:latest .",
+      "docker build --build-arg VITE_API_BASE_URL=$${VITE_API_BASE_URL} --build-arg BACKEND_BASE_URL=$${BACKEND_BASE_URL} --build-arg VITE_RAZORPAY_KEY=$${VITE_RAZORPAY_KEY} --build-arg VITE_MOENGAGE_APP_ID=$${VITE_MOENGAGE_APP_ID} --build-arg VITE_MOENGAGE_API_KEY=$${VITE_MOENGAGE_API_KEY} --build-arg VITE_MOENGAGE_BASE_URL=$${VITE_MOENGAGE_BASE_URL} --build-arg VITE_MOENGAGE_CLUSTER=$${VITE_MOENGAGE_CLUSTER} --build-arg VITE_SENTRY_DSN=$${VITE_SENTRY_DSN} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_GA4_MEASUREMENT_ID=$${VITE_GA4_MEASUREMENT_ID} --build-arg VITE_META_PIXEL_ID=$${VITE_META_PIXEL_ID} --build-arg VITE_CLARITY_PROJECT_ID=$${VITE_CLARITY_PROJECT_ID} --build-arg LAWYERED_CHALLAN_TOKEN=$${LAWYERED_CHALLAN_TOKEN} --build-arg RAZORPAY_ORDER_ORIGIN=$${RAZORPAY_ORDER_ORIGIN} --build-arg VITE_PAYMENT_HISTORY_PATH=$${VITE_PAYMENT_HISTORY_PATH} --build-arg VITE_GA4_RSP_MEASUREMENT_ID=$${VITE_GA4_RSP_MEASUREMENT_ID} -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
     tags = {
