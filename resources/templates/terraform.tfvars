@@ -418,6 +418,27 @@ codepipelines = {
       "docker build --build-arg VITE_API_URL=$${VITE_API_URL} --build-arg VITE_METABASE_DASHBOARD_ID=$${VITE_METABASE_DASHBOARD_ID} --build-arg VITE_METABASE_SECRET_KEY=$${VITE_METABASE_SECRET_KEY} --build-arg VITE_METABASE_SITE_URL=$${VITE_METABASE_SITE_URL} --build-arg VITE_METABASE_TOKEN_EXPIRY_SECONDS=$${VITE_METABASE_TOKEN_EXPIRY_SECONDS} --build-arg VITE_API_NEW_URL=$${VITE_API_NEW_URL} --build-arg VITE_NEW_API_URL=$${VITE_API_NEW_URL} --build-arg VITE_RSP_COMMISSION_URL=$${VITE_RSP_COMMISSION_URL} --build-arg VITE_DATADOG_APP_ID=$${VITE_DATADOG_APP_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_SERVICE=$${VITE_DATADOG_SERVICE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_DATADOG_VERSION=$${VITE_DATADOG_VERSION} -t $REPOS_URL:latest .",
       "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
     ]
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+      "echo Setting up SSH key for manifest repo push...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|.*$(basename $REPOS_URL):.*|          image: $REPOS_URL:$IMAGE_TAG|g; s|image: >-||g\" deployments/stg-admin-lawyered-fe/deployment.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-admin-lawyered-fe/deployment.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"

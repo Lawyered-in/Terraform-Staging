@@ -25,4 +25,9 @@ spec:
       - PrunePropagationPolicy=foreground
       - PruneLast=true
       - Replace=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/image
   revisionHistoryLimit: 3
