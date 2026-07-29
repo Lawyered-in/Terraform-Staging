@@ -24,5 +24,13 @@ spec:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
-      - Replace=true
+  ignoreDifferences:
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/volumeName
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/1/image
   revisionHistoryLimit: 3
