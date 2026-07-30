@@ -25,6 +25,7 @@ spec:
       - PrunePropagationPolicy=foreground
       - PruneLast=true
       - Replace=true
+      - RespectIgnoreDifferences=true
   ignoreDifferences:
     - group: apps
       kind: Deployment
