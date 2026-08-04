@@ -252,3 +252,14 @@ spec:
               port:
                 number: 80
 
+# ── staging-challans.lawyered.in ───────────────────────────────────────
+  - host: staging-challans.lawyered.in
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: stg-challan-screening
+              port:
+                number: 80
