@@ -381,7 +381,7 @@ phases:
                     return 2
                     
                 findings.sort(key=lambda x: map_severity(x['level']))
-                display_findings = findings[:50]
+                display_findings = findings
                 
                 self.set_font('helvetica', 'B', 8)
                 self.set_fill_color(229, 231, 235)
@@ -394,8 +394,9 @@ phases:
                 
                 self.set_font('helvetica', '', 7)
                 for f in display_findings:
-                    if self.get_y() > 270:
+                    if self.get_y() > 250:
                         self.add_page()
+                        self.set_y(40)
                         self.set_font('helvetica', 'B', 8)
                         self.set_fill_color(229, 231, 235)
                         self.set_text_color(31, 41, 55)
@@ -435,11 +436,6 @@ phases:
                     self.multi_cell(70, 5, desc, 1, 'L')
                     self.set_y(start_y + 10)
                     
-                if len(findings) > 50:
-                    self.ln(2)
-                    self.set_font('helvetica', 'I', 8)
-                    self.set_text_color(107, 114, 128)
-                    self.cell(0, 5, f"* Showing first 50 of {len(findings)} total findings. See full SARIF results for details.", 0, 1)
                 self.ln(5)
 
         def main():
