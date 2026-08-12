@@ -16,6 +16,11 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: stg
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/image
   syncPolicy:
     automated:
       prune: true

@@ -167,16 +167,7 @@ ecr_repositories = {
       Project     = "lawyered"
     }
   }
-  partners-portal-fe-feature = {
-    name                 = "partners-portal-fe-feature"
-    image_tag_mutability = "MUTABLE"
-    scan_on_push         = true
-    tags = {
-      Environment = "stage"
-      Owner       = "infra-team"
-      Project     = "lawyered"
-    }
-  }
+
   admin-lawyered-fe = {
     name                 = "admin-lawyered-fe"
     image_tag_mutability = "MUTABLE"
@@ -567,38 +558,6 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      VITE_API_BASE_URL           = "https://staging.lawyered.in/api/v1"
-      VITE_API_STATE_CITY         = "https://lawyered.in"
-      VITE_DATADOG_APPLICATION_ID = "be478f15-601d-49eb-9568-3d4529e800b9"
-      VITE_DATADOG_CLIENT_TOKEN   = "pub3581edb97eb8bdd70a25888e52aabaf6"
-      VITE_DATADOG_SITE           = "us5.datadoghq.com"
-      VITE_MOENGAGE_APP_ID        = "QXZHRWGDAYS9LWCRKWXTV52D"
-      VITE_OVERVIEW_BASE_URL      = "https://lawyered.in/uploads/location-files"
-      VITE_QR_LOGO_URL            = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/qr-logo.svg"
-    }
-    custom_build_commands = [
-      "echo Build started on `date`",
-      "echo Building the Docker image with VITE_* build args...",
-      "docker build --build-arg VITE_API_BASE_URL=$${VITE_API_BASE_URL} --build-arg VITE_API_STATE_CITY=$${VITE_API_STATE_CITY} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_MOENGAGE_APP_ID=$${VITE_MOENGAGE_APP_ID} --build-arg VITE_OVERVIEW_BASE_URL=$${VITE_OVERVIEW_BASE_URL} --build-arg VITE_QR_LOGO_URL=$${VITE_QR_LOGO_URL} -t $REPOS_URL:latest .",
-      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
-    ]
-    tags = {
-      Environment = "stage"
-      Project     = "lawyered"
-      Service     = "pipeline"
-    }
-  }
-  partners-portal-fe-feature = {
-    repository_id        = "Lawyered-in/partners-portal-fe"
-    branch_name          = "partners-new-backend"
-    ecr_key              = "partners-portal-fe-feature"
-    prefetch_images      = ["node:20-alpine"]
-    manifest_file_path   = "deployments/stg-partners-portal-fe-feature"
-    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace      = "StagingBuildNamespace"
-    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
-    enable_security_scan = true
-    build_args = {
       VITE_API_BASE_URL           = "https://staging-be.lawyered.in/api/v1"
       VITE_API_STATE_CITY         = "https://lawyered.in"
       VITE_DATADOG_APPLICATION_ID = "be478f15-601d-49eb-9568-3d4529e800b9"
@@ -620,6 +579,7 @@ codepipelines = {
       Service     = "pipeline"
     }
   }
+
   challanpay-fe-next = {
     repository_id        = "Lawyered-in/challanpay-fe-next"
     branch_name          = "staging"
