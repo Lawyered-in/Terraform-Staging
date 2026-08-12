@@ -547,7 +547,8 @@ codepipelines = {
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
     build_args = {
-      NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/lawyered-website-assets"
+      NEXT_PUBLIC_R2_STORAGE_URL  = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/lawyered-website-assets"
+      NEXT_PUBLIC_LAWYERED_BE_URL = "https://staging-be.lawyered.in"
     }
     tags = {
       Environment = "stage"
