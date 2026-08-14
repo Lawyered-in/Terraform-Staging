@@ -847,13 +847,12 @@ codepipelines = {
       VITE_DATADOG_ENV            = "development"
       VITE_AI_URL                 = "https://lava-ai-for-lots247.onrender.com"
       VITE_GTM_ID                 = "GTM-PNZZHFT6"
+      VITE_METABASE_SITE_URL      = "https://analytics.lawyered.in"
+      VITE_METABASE_DASHBOARD_ID  = "70"
+      VITE_METABASE_SECRET_KEY    = "4a875a120d779fdc5f1a9b740a3b21fa28a0c21694371ad23de0fa4cbb59f502"
+      VITE_METABASE_TOKEN_EXPIRY_SECONDS = "600"
     }
-    custom_build_commands = [
-      "echo Build started on `date`",
-      "echo Building the Docker image with VITE_* build args...",
-      "docker build --build-arg VITE_API_URL=$${VITE_API_URL} --build-arg VITE_RAZORPAY_KEY=$${VITE_RAZORPAY_KEY} --build-arg VITE_DATADOG_APPLICATION_ID=$${VITE_DATADOG_APPLICATION_ID} --build-arg VITE_DATADOG_CLIENT_TOKEN=$${VITE_DATADOG_CLIENT_TOKEN} --build-arg VITE_DATADOG_SITE=$${VITE_DATADOG_SITE} --build-arg VITE_DATADOG_SERVICE=$${VITE_DATADOG_SERVICE} --build-arg VITE_DATADOG_ENV=$${VITE_DATADOG_ENV} --build-arg VITE_AI_URL=$${VITE_AI_URL} --build-arg VITE_GTM_ID=$${VITE_GTM_ID} -t $REPOS_URL:latest .",
-      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
-    ]
+
     tags = {
       Environment = "stage"
       Project     = "lawyered"
