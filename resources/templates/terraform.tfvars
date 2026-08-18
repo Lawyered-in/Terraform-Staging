@@ -845,7 +845,6 @@ codepipelines = {
       VITE_DATADOG_SITE           = "us5.datadoghq.com"
       VITE_DATADOG_SERVICE        = "subscriber-dashboard-lots247"
       VITE_DATADOG_ENV            = "development"
-      VITE_AI_URL                 = "https://lava-ai-for-lots247.onrender.com"
       VITE_GTM_ID                 = "GTM-PNZZHFT6"
       VITE_METABASE_SITE_URL      = "https://analytics.lawyered.in"
       VITE_METABASE_DASHBOARD_ID  = "70"
