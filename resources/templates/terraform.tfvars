@@ -85,7 +85,7 @@ eks_clusters = {
       eks-nodegroup-np = {
         desired_size   = 3
         min_size       = 1
-        max_size       = 7
+        max_size       = 10
         instance_types = ["m6a.large"]
         capacity_type  = "ON_DEMAND"
         disk_size      = 50
@@ -238,26 +238,7 @@ ecr_repositories = {
       Project     = "prosper-wealth"
     }
   }
-  faas-be = {
-    name                 = "faas-be"
-    image_tag_mutability = "MUTABLE"
-    scan_on_push         = true
-    tags = {
-      Environment = "stage"
-      Owner       = "infra-team"
-      Project     = "prosper-wealth"
-    }
-  }
-  faas-fe = {
-    name                 = "faas-fe"
-    image_tag_mutability = "MUTABLE"
-    scan_on_push         = true
-    tags = {
-      Environment = "stage"
-      Owner       = "infra-team"
-      Project     = "prosper-wealth"
-    }
-  }
+
   # ------------------------------------------------------------------
   # subscriber-fe
   # ECR Repository for the Subscriber Frontend application.
@@ -746,80 +727,7 @@ codepipelines = {
     }
   }
 
-  # ------------------------------------------------------------------
-  # faas-be
-  # GitHub Org : prosper-wealth
-  # Branch     : staging
-  # ------------------------------------------------------------------
-  faas-be = {
-    repository_id        = "prosper-wealth/faas-be"
-    branch_name          = "staging"
-    ecr_key              = "faas-be"
-    prefetch_images      = ["node:22-alpine"]
-    manifest_file_path   = "deployments/stg-faas-be"
-    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace      = "StagingBuildNamespace"
-    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
-    enable_security_scan = true
-    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
-    custom_post_build_commands = [
-      "echo Build completed on `date`",
-      "echo Pushing the Docker images...",
-      "docker push $REPOS_URL:latest",
-      "docker push $REPOS_URL:$IMAGE_TAG",
-      "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-      "echo Setting up SSH key for manifest repo push...",
-      "mkdir -p ~/.ssh",
-      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
-      "chmod 600 ~/.ssh/id_rsa",
-      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
-      "echo Cloning k8s-manifest repo...",
-      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
-      "cd /tmp/k8s-manifest && git checkout staging",
-      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-faas-be/deployment.yaml",
-      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-faas-be/migration-job.yaml",
-      "cd /tmp/k8s-manifest && sed -i \"s|name: faas-be-migrate-.*|name: faas-be-migrate-$IMAGE_TAG|g\" deployments/stg-faas-be/migration-job.yaml",
-      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
-      "cd /tmp/k8s-manifest && git add deployments/stg-faas-be/deployment.yaml deployments/stg-faas-be/migration-job.yaml",
-      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
-      "cd /tmp/k8s-manifest && git push origin staging"
-    ]
-    tags = {
-      Environment = "stage"
-      Project     = "prosper-wealth"
-      Service     = "pipeline"
-    }
-  }
 
-  # ------------------------------------------------------------------
-  # faas-fe
-  # GitHub Org : prosper-wealth
-  # Branch     : staging
-  # ------------------------------------------------------------------
-  faas-fe = {
-    repository_id        = "prosper-wealth/faas-fe"
-    branch_name          = "staging"
-    ecr_key              = "faas-fe"
-    prefetch_images      = ["node:20-alpine"]
-    manifest_file_path   = "deployments/stg-faas-fe"
-    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    build_namespace      = "StagingBuildNamespace"
-    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
-    enable_security_scan = true
-    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
-    build_args = {
-      NEXT_PUBLIC_API_URL      = "https://prosper-api.staging.prosperwealth.ai/v1"
-      NEXT_PUBLIC_ROOT_DOMAIN  = "staging.prosperwealth.ai"
-      NEXT_PUBLIC_POSTHOG_KEY  = "phc_M1Yh3LvzlZvBrjfqpE3h7IlV7kWAONqIXzgCUMFp24F"
-      NEXT_PUBLIC_POSTHOG_HOST = "https://us.i.posthog.com"
-    }
-    tags = {
-      Environment = "stage"
-      Project     = "prosper-wealth"
-      Service     = "pipeline"
-    }
-  }
 
   # ------------------------------------------------------------------
   # subscriber-fe Pipeline

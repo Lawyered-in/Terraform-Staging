@@ -420,8 +420,6 @@ locals {
     "challan-screening",
     "challanpay-fe-next",
     "challanpay-react",
-    "faas-be",
-    "faas-fe",
     "laravel-api",
     "lawyered-in-website",
     "lots247-in",
