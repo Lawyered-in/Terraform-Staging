@@ -240,3 +240,15 @@ spec:
               name: stg-challan-screening
               port:
                 number: 80
+
+  # ── staging.finvica.com ─────────────────────────────────────────────────
+  - host: staging.finvica.com
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: stg-finvica-web
+              port:
+                number: 80

@@ -238,6 +238,16 @@ ecr_repositories = {
       Project     = "prosper-wealth"
     }
   }
+  finvica-web = {
+    name                 = "finvica-web"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "prosper-wealth"
+    }
+  }
 
   # ------------------------------------------------------------------
   # subscriber-fe
@@ -727,7 +737,28 @@ codepipelines = {
     }
   }
 
-
+  # ------------------------------------------------------------------
+  # finvica-web
+  # GitHub Org : prosper-wealth
+  # Branch     : staging
+  # ------------------------------------------------------------------
+  finvica-web = {
+    repository_id        = "prosper-wealth/finvica-web"
+    branch_name          = "staging"
+    ecr_key              = "finvica-web"
+    prefetch_images      = ["node:24-alpine"]
+    manifest_file_path   = "deployments/stg-finvica-web"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    tags = {
+      Environment = "stage"
+      Project     = "prosper-wealth"
+      Service     = "pipeline"
+    }
+  }
 
   # ------------------------------------------------------------------
   # subscriber-fe Pipeline
