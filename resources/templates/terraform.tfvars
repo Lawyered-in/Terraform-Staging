@@ -415,7 +415,7 @@ codepipelines = {
       "echo Cloning k8s-manifest repo...",
       "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
       "cd /tmp/k8s-manifest && git checkout staging",
-      "cd /tmp/k8s-manifest && sed -i \"s|.*$(basename $REPOS_URL):.*|          image: $REPOS_URL:$IMAGE_TAG|g; s|image: >-||g\" deployments/stg-admin-lawyered-fe/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-admin-lawyered-fe/deployment.yaml",
       "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
       "cd /tmp/k8s-manifest && git add deployments/stg-admin-lawyered-fe/deployment.yaml",
       "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
