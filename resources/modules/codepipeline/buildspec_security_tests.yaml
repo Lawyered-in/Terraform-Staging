@@ -471,7 +471,10 @@ phases:
                 f.write(f"MEDIUM_COUNT={medium_count}\n")
                 f.write(f"LOW_COUNT={low_count}\n")
                 f.write(f"GATE_STATUS={status}\n")
-                f.write(f"GATE_REASONS={'; '.join(reasons)}\n")
+                # Quoted: this value contains spaces and '>' -- unquoted, `source`
+                # would parse '>' as a shell redirection instead of literal text.
+                reasons_text = '; '.join(reasons).replace('"', '\\"')
+                f.write(f'GATE_REASONS="{reasons_text}"\n')
 
             print(f"Security gate: {status}")
             if reasons:
