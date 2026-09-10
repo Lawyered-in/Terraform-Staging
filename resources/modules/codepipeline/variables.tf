@@ -122,6 +122,18 @@ variable "custom_post_build_commands" {
   default     = null
 }
 
+variable "enable_gated_deploy" {
+  type        = bool
+  description = "When true (and enable_security_scan is true), the k8s-manifest push is moved out of the Build stage into a separate Deploy stage that only runs after the SecurityScan stage passes. When false (default), Build pushes the manifest directly, same as before -- required for a pipeline whose custom_post_build_commands/manifest_file_path have not yet been migrated to the split layout."
+  default     = false
+}
+
+variable "custom_deploy_commands" {
+  type        = list(string)
+  description = "Optional list of commands to run in the Deploy stage (only used when enable_gated_deploy is true). If not provided, defaults to cloning k8s-manifest, patching manifest_file_path/deployment.yaml with the built image, and pushing to manifest_branch."
+  default     = null
+}
+
 variable "enable_security_scan" {
   type        = bool
   description = "Enable vulnerability and security scanning stage"
@@ -150,6 +162,24 @@ variable "security_scan_compute_type" {
   type        = string
   description = "Compute type for the security scan project (e.g. BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM)"
   default     = "BUILD_GENERAL1_SMALL"
+}
+
+variable "critical_threshold" {
+  type        = number
+  description = "Max allowed Critical+High severity findings (combined Semgrep+Grype) before the security gate blocks deployment"
+  default     = 3
+}
+
+variable "medium_threshold" {
+  type        = number
+  description = "Max allowed Medium severity findings before the security gate blocks deployment"
+  default     = 5
+}
+
+variable "low_threshold" {
+  type        = number
+  description = "Max allowed Low severity findings before the security gate blocks deployment"
+  default     = 10
 }
 
 

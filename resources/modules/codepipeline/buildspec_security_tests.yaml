@@ -56,7 +56,7 @@ phases:
       - syft docker:$REPOS_URL:$IMAGE_TAG -o json > sbom.json
       - echo Running Grype Vulnerability scan...
       - export GRYPE_DB_VALIDATE_AGE=false
-      - grype docker:$REPOS_URL:$IMAGE_TAG -o sarif > grype.sarif || true
+      - grype docker:$REPOS_URL:$IMAGE_TAG -o sarif=grype.sarif -o json=grype.json || true
   post_build:
     commands:
       - echo Creating PDF generation script...
@@ -345,6 +345,7 @@ phases:
       - aws s3 cp semgrep.sarif s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/semgrep.sarif
       - aws s3 cp sbom.json s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/sbom.json
       - aws s3 cp grype.sarif s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype.sarif
+      - aws s3 cp grype.json s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype.json
       - aws s3 cp security_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/security_report.pdf
       - aws s3 cp semgrep_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/semgrep_report.pdf
       - aws s3 cp grype_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype_report.pdf
@@ -390,29 +391,119 @@ phases:
       - echo Running cleanup script...
       - python3 cleanup.py "$SECURITY_REPORTS_BUCKET" "$APP_NAME"
       - echo Cleanup finished.
-      - echo Loading count environment variables...
+      - echo Creating gate evaluation script...
       - |
-        if [ -f counts.env ]; then
-          . ./counts.env
-        else
-          HIGH_COUNT=0
-          MED_COUNT=0
-          LOW_COUNT=0
-        fi
-      - |
-        if [ "$HIGH_COUNT" -eq 0 ]; then
-          SECURITY_MESSAGE="✅ You're Secure"
-        else
-          SECURITY_MESSAGE="⚠️ Action Required"
-        fi
+        cat << 'EOF' > evaluate_gate.py
+        import json
+        import os
+
+        def load_counts_env(path):
+            values = {}
+            if os.path.exists(path):
+                with open(path) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or '=' not in line:
+                            continue
+                        k, v = line.split('=', 1)
+                        values[k] = v
+            return values
+
+        def count_grype_severities(path):
+            # Grype's own severity field (Critical/High/Medium/Low/Negligible/Unknown)
+            # from the JSON report -- unlike the SARIF report, this preserves the
+            # real CVE severity instead of collapsing everything to error/warning/note.
+            sev = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
+            if not os.path.exists(path):
+                return sev
+            try:
+                with open(path) as f:
+                    data = json.load(f)
+            except Exception as e:
+                print(f"Error parsing {path}: {e}")
+                return sev
+            for match in data.get('matches', []):
+                level = match.get('vulnerability', {}).get('severity', 'Unknown').lower()
+                if level == 'critical':
+                    sev['critical'] += 1
+                elif level == 'high':
+                    sev['high'] += 1
+                elif level == 'medium':
+                    sev['medium'] += 1
+                else:
+                    # Low, Negligible and Unknown all roll into the Low gate bucket
+                    sev['low'] += 1
+            return sev
+
+        def main():
+            counts = load_counts_env('counts.env')
+            semgrep_medium = int(counts.get('S_MED', 0))
+            semgrep_low = int(counts.get('S_LOW', 0))
+
+            gj = count_grype_severities('grype.json')
+
+            # Critical/High CVEs share one gate bucket: an ungated "High" tier would
+            # let an unlimited number of high-severity vulnerabilities through.
+            critical_count = gj['critical'] + gj['high']
+            medium_count = gj['medium'] + semgrep_medium
+            low_count = gj['low'] + semgrep_low
+
+            critical_threshold = int(os.environ.get('CRITICAL_THRESHOLD', 3))
+            medium_threshold = int(os.environ.get('MEDIUM_THRESHOLD', 5))
+            low_threshold = int(os.environ.get('LOW_THRESHOLD', 10))
+
+            reasons = []
+            if critical_count > critical_threshold:
+                reasons.append(f"Critical/High {critical_count} > {critical_threshold}")
+            if medium_count > medium_threshold:
+                reasons.append(f"Medium {medium_count} > {medium_threshold}")
+            if low_count > low_threshold:
+                reasons.append(f"Low {low_count} > {low_threshold}")
+
+            status = "FAIL" if reasons else "PASS"
+
+            with open('gate_counts.env', 'w') as f:
+                f.write(f"GJ_CRITICAL={gj['critical']}\n")
+                f.write(f"GJ_HIGH={gj['high']}\n")
+                f.write(f"GJ_MEDIUM={gj['medium']}\n")
+                f.write(f"GJ_LOW={gj['low']}\n")
+                f.write(f"CRITICAL_COUNT={critical_count}\n")
+                f.write(f"MEDIUM_COUNT={medium_count}\n")
+                f.write(f"LOW_COUNT={low_count}\n")
+                f.write(f"GATE_STATUS={status}\n")
+                f.write(f"GATE_REASONS={'; '.join(reasons)}\n")
+
+            print(f"Security gate: {status}")
+            if reasons:
+                print("Breached thresholds: " + '; '.join(reasons))
+
+        if __name__ == '__main__':
+            main()
+        EOF
+      - echo Running gate evaluation...
+      - python3 evaluate_gate.py
+      - . ./gate_counts.env
       - echo Fetching Slack Webhook URL from Secrets Manager...
       - SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/slack-webhook --query SecretString --output text || echo "")
+      - |
+        if [ "$GATE_STATUS" = "FAIL" ]; then
+          HEADER="🚫 *DEPLOYMENT BLOCKED — Security Gate Failed:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)"
+          RESULT_LINE="⚠️ Thresholds breached: ${GATE_REASONS}"
+        else
+          HEADER="✅ *Security Gate Passed:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)"
+          RESULT_LINE="✅ All findings within allowed thresholds"
+        fi
       - |
         if [ ! -z "$SLACK_WEBHOOK_URL" ] && [ "$SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
           echo "Sending scan status alert to Slack..."
           curl -X POST -H 'Content-type: application/json' --data "{
-            \"text\": \"🛡️ *Security Pipeline Results:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)\\n--------------------------------------------------\\n*🔑 Security Gates:*\\n  ✅ SAST Scan (Semgrep) completed -- <${SEMGREP_LINK}|Download Semgrep Report>\\n  ✅ Dependency Scan (Grype) completed -- <${GRYPE_LINK}|Download Grype Report>\\n  ✅ SBOM Generation (Syft) completed -- <${SBOM_LINK}|Download SBOM>\\n\\n*📈 Results:* ${SECURITY_MESSAGE}\\n  🔴 High: \`${HIGH_COUNT}\`  |  🟡 Medium: \`${MED_COUNT}\`  |  🟢 Low: \`${LOW_COUNT}\`\\n\\n*🔗 Artifacts:*\\n  📄 Consolidated Report: <${PDF_LINK}|Download PDF>\\n  📂 S3 Directory: <https://s3.console.aws.amazon.com/s3/buckets/${SECURITY_REPORTS_BUCKET}?prefix=${SCAN_FOLDER}/|View S3 Folder>\"
+            \"text\": \"${HEADER}\\n--------------------------------------------------\\n*🔑 Security Gates:*\\n  ✅ SAST Scan (Semgrep) completed -- <${SEMGREP_LINK}|Download Semgrep Report>\\n  ✅ Dependency Scan (Grype) completed -- <${GRYPE_LINK}|Download Grype Report>\\n  ✅ SBOM Generation (Syft) completed -- <${SBOM_LINK}|Download SBOM>\\n\\n*📈 Results:* ${RESULT_LINE}\\n  🔴 Critical/High: \`${CRITICAL_COUNT}\` (max ${CRITICAL_THRESHOLD})  |  🟡 Medium: \`${MEDIUM_COUNT}\` (max ${MEDIUM_THRESHOLD})  |  🟢 Low: \`${LOW_COUNT}\` (max ${LOW_THRESHOLD})\\n\\n*🔗 Artifacts:*\\n  📄 Consolidated Report: <${PDF_LINK}|Download PDF>\\n  📂 S3 Directory: <https://s3.console.aws.amazon.com/s3/buckets/${SECURITY_REPORTS_BUCKET}?prefix=${SCAN_FOLDER}/|View S3 Folder>\"
           }" "$SLACK_WEBHOOK_URL"
         else
           echo "Slack Webhook URL is empty or placeholder, skipping notification."
+        fi
+      - |
+        if [ "$GATE_STATUS" = "FAIL" ]; then
+          echo "Security gate FAILED: ${GATE_REASONS}"
+          exit 1
         fi

@@ -1,4 +1,4 @@
-  # -------------------------------------------------------------------
+# -------------------------------------------------------------------
 # S3 Bucket for Pipeline Artifacts
 # -------------------------------------------------------------------
 resource "aws_s3_bucket" "artifacts" {
@@ -194,27 +194,36 @@ resource "aws_codebuild_project" "this" {
             ]
           }
           post_build = {
-            commands = var.custom_post_build_commands != null ? var.custom_post_build_commands : [
-              "echo Build completed on `date`",
-              "echo Pushing the Docker images...",
-              "docker push $REPOS_URL:latest",
-              "docker push $REPOS_URL:$IMAGE_TAG",
-              "echo Writing image definitions file...",
-              "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-              "echo Setting up SSH key for manifest repo push...",
-              "mkdir -p ~/.ssh",
-              "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
-              "chmod 600 ~/.ssh/id_rsa",
-              "ssh-keyscan github.com >> ~/.ssh/known_hosts",
-              "echo Cloning k8s-manifest repo...",
-              "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
-              "cd /tmp/k8s-manifest && git checkout ${var.manifest_branch}",
-              "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
-              "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
-              "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
-              "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
-              "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
-            ]
+            commands = var.custom_post_build_commands != null ? var.custom_post_build_commands : (
+              var.enable_gated_deploy ? [
+                "echo Build completed on `date`",
+                "echo Pushing the Docker images...",
+                "docker push $REPOS_URL:latest",
+                "docker push $REPOS_URL:$IMAGE_TAG",
+                "echo Writing image definitions file...",
+                "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+                ] : [
+                "echo Build completed on `date`",
+                "echo Pushing the Docker images...",
+                "docker push $REPOS_URL:latest",
+                "docker push $REPOS_URL:$IMAGE_TAG",
+                "echo Writing image definitions file...",
+                "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
+                "echo Setting up SSH key for manifest repo push...",
+                "mkdir -p ~/.ssh",
+                "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+                "chmod 600 ~/.ssh/id_rsa",
+                "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+                "echo Cloning k8s-manifest repo...",
+                "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+                "cd /tmp/k8s-manifest && git checkout ${var.manifest_branch}",
+                "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
+                "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+                "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
+                "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+                "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
+              ]
+            )
           }
         }
         artifacts = {
@@ -280,11 +289,83 @@ resource "aws_codebuild_project" "security_scan" {
       name  = "BRANCH_NAME"
       value = var.branch_name
     }
+
+    environment_variable {
+      name  = "CRITICAL_THRESHOLD"
+      value = tostring(var.critical_threshold)
+    }
+
+    environment_variable {
+      name  = "MEDIUM_THRESHOLD"
+      value = tostring(var.medium_threshold)
+    }
+
+    environment_variable {
+      name  = "LOW_THRESHOLD"
+      value = tostring(var.low_threshold)
+    }
   }
 
   source {
     type      = "CODEPIPELINE"
     buildspec = file("${path.module}/buildspec_security_tests.yaml")
+  }
+
+  tags = var.tags
+}
+
+# -------------------------------------------------------------------
+# CodeBuild Deploy Project
+# Pushes the k8s-manifest update (which ArgoCD auto-syncs) *after* the
+# SecurityScan stage has passed, instead of from inside the Build stage.
+# Only created when enable_gated_deploy is true.
+# -------------------------------------------------------------------
+resource "aws_codebuild_project" "deploy" {
+  count        = var.enable_gated_deploy && var.enable_security_scan ? 1 : 0
+  name         = "${var.pipeline_name}-deploy"
+  description  = "Updates k8s-manifest to trigger ArgoCD deployment for ${var.pipeline_name}"
+  service_role = aws_iam_role.build.arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type    = var.build_compute_type
+    image           = var.build_image
+    type            = "LINUX_CONTAINER"
+    privileged_mode = false
+
+    environment_variable {
+      name  = "GITHUB_TOKEN_SECRET_NAME"
+      value = var.github_token_secret_name
+    }
+  }
+
+  source {
+    type = "CODEPIPELINE"
+    buildspec = yamlencode({
+      version = 0.2
+      phases = {
+        post_build = {
+          commands = var.custom_deploy_commands != null ? var.custom_deploy_commands : [
+            "echo Deploying $REPOS_URL:$IMAGE_TAG for ${var.pipeline_name}...",
+            "mkdir -p ~/.ssh",
+            "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+            "chmod 600 ~/.ssh/id_rsa",
+            "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+            "echo Cloning k8s-manifest repo...",
+            "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+            "cd /tmp/k8s-manifest && git checkout ${var.manifest_branch}",
+            "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
+            "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+            "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
+            "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+            "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
+          ]
+        }
+      }
+    })
   }
 
   tags = var.tags
@@ -353,8 +434,41 @@ resource "aws_codepipeline" "this" {
         output_artifacts = ["security_scan_output"]
 
         configuration = {
-          ProjectName          = aws_codebuild_project.security_scan[0].name
-          PrimarySource        = "source_output"
+          ProjectName   = aws_codebuild_project.security_scan[0].name
+          PrimarySource = "source_output"
+          EnvironmentVariables = jsonencode([
+            {
+              name  = "IMAGE_TAG"
+              value = format("#{%s.IMAGE_TAG}", coalesce(var.build_namespace, "BuildVariables"))
+              type  = "PLAINTEXT"
+            },
+            {
+              name  = "REPOS_URL"
+              value = format("#{%s.REPOS_URL}", coalesce(var.build_namespace, "BuildVariables"))
+              type  = "PLAINTEXT"
+            }
+          ])
+        }
+      }
+    }
+  }
+
+  dynamic "stage" {
+    for_each = var.enable_gated_deploy && var.enable_security_scan ? [1] : []
+    content {
+      name = "Deploy"
+      action {
+        name             = "Deploy"
+        category         = "Build"
+        owner            = "AWS"
+        provider         = "CodeBuild"
+        version          = "1"
+        input_artifacts  = ["source_output"]
+        output_artifacts = ["deploy_output"]
+
+        configuration = {
+          ProjectName   = aws_codebuild_project.deploy[0].name
+          PrimarySource = "source_output"
           EnvironmentVariables = jsonencode([
             {
               name  = "IMAGE_TAG"

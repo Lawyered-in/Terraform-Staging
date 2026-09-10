@@ -721,11 +721,16 @@ module "codepipeline" {
   custom_pre_build_commands    = each.value.custom_pre_build_commands
   custom_build_commands        = each.value.custom_build_commands
   custom_post_build_commands   = each.value.custom_post_build_commands
+  custom_deploy_commands       = each.value.custom_deploy_commands
   enable_security_scan         = try(each.value.enable_security_scan, false)
+  enable_gated_deploy          = try(each.value.enable_gated_deploy, false)
   security_scan_role_arn       = aws_iam_role.devsecops_role.arn
   security_reports_bucket_name = aws_s3_bucket.devsecops_reports.bucket
   build_compute_type           = each.value.build_compute_type
   security_scan_compute_type   = try(each.value.security_scan_compute_type, "BUILD_GENERAL1_SMALL")
+  critical_threshold           = try(each.value.critical_threshold, 3)
+  medium_threshold             = try(each.value.medium_threshold, 5)
+  low_threshold                = try(each.value.low_threshold, 10)
   tags                         = each.value.tags
 }
 

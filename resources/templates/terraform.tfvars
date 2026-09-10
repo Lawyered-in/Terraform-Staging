@@ -379,6 +379,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       VITE_API_URL                       = "https://staging.lawyered.in/api/v3/admin"
       VITE_METABASE_DASHBOARD_ID         = "79"
@@ -406,8 +407,10 @@ codepipelines = {
       "docker push $REPOS_URL:latest",
       "docker push $REPOS_URL:$IMAGE_TAG",
       "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-      "echo Setting up SSH key for manifest repo push...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for admin-lawyered-fe...",
       "mkdir -p ~/.ssh",
       "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
       "chmod 600 ~/.ssh/id_rsa",
@@ -437,6 +440,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       VITE_REGISTER_BASE_URL      = "https://staging-dashboard.lots247.in/register"
       VITE_QR_REDIRECTS           = "sarathi|https://pages.razorpay.com/pl_TAYfPHbjTTlXax/view?product=SARATHI_QR_REGISTRATION"
@@ -476,6 +480,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       DATABASE_URL = "mysql://admin:E7mshc5M7L3fkAVPc2<5qRT6o6i2@lawyered-database.cluster-cj446ammul0i.ap-south-1.rds.amazonaws.com:3306/proddblawyered"
     }
@@ -495,8 +500,10 @@ codepipelines = {
       "docker push $REPOS_URL:latest",
       "docker push $REPOS_URL:$IMAGE_TAG",
       "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-      "echo Setting up SSH key for manifest repo push...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for admin-lawyered...",
       "mkdir -p ~/.ssh",
       "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
       "chmod 600 ~/.ssh/id_rsa",
@@ -528,6 +535,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL  = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/lawyered-website-assets"
       NEXT_PUBLIC_LAWYERED_BE_URL = "https://staging-be.lawyered.in"
@@ -548,6 +556,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       VITE_API_BASE_URL           = "https://staging-be.lawyered.in/api/v1"
       VITE_API_STATE_CITY         = "https://lawyered.in"
@@ -581,6 +590,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/challanpay-website-assets"
     }
@@ -606,14 +616,17 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     custom_post_build_commands = [
       "echo Build completed on `date`",
       "echo Pushing the Docker images...",
       "docker push $REPOS_URL:latest",
       "docker push $REPOS_URL:$IMAGE_TAG",
       "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-      "echo Setting up SSH key for manifest repo push...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for api-challans...",
       "mkdir -p ~/.ssh",
       "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
       "chmod 600 ~/.ssh/id_rsa",
@@ -643,6 +656,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -659,6 +673,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     tags = {
       Environment = "stage"
       Project     = "lawyered"
@@ -680,6 +695,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     custom_post_build_commands = [
       "echo Build completed on `date`",
@@ -687,8 +703,10 @@ codepipelines = {
       "docker push $REPOS_URL:latest",
       "docker push $REPOS_URL:$IMAGE_TAG",
       "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-      "echo Setting up SSH key for manifest repo push...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for prosper-be...",
       "mkdir -p ~/.ssh",
       "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
       "chmod 600 ~/.ssh/id_rsa",
@@ -726,6 +744,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     build_args = {
       VITE_API_URL = "https://staging-api.finvica.com/api/v1"
@@ -752,6 +771,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
     tags = {
       Environment = "stage"
@@ -776,6 +796,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       VITE_API_URL                = "https://staging-be.lawyered.in/api/v1"
       VITE_RAZORPAY_KEY           = "rzp_test_StsoJuLzSQ0KRb"
@@ -814,14 +835,17 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     custom_post_build_commands = [
       "echo Build completed on `date`",
       "echo Pushing the Docker images...",
       "docker push $REPOS_URL:latest",
       "docker push $REPOS_URL:$IMAGE_TAG",
       "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-      "echo Setting up SSH key for manifest repo push...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for lawyered-be...",
       "mkdir -p ~/.ssh",
       "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
       "chmod 600 ~/.ssh/id_rsa",
@@ -860,14 +884,17 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     custom_post_build_commands = [
       "echo Build completed on `date`",
       "echo Pushing the Docker images...",
       "docker push $REPOS_URL:latest",
       "docker push $REPOS_URL:$IMAGE_TAG",
       "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json",
-      "echo Setting up SSH key for manifest repo push...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for laravel-api...",
       "mkdir -p ~/.ssh",
       "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
       "chmod 600 ~/.ssh/id_rsa",
@@ -907,6 +934,7 @@ codepipelines = {
     build_namespace      = "StagingBuildNamespace"
     exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
     enable_security_scan = true
+    enable_gated_deploy  = true
     build_args = {
       VITE_API_BASE_URL           = "https://staging-be.lawyered.in/api/v1"
       BACKEND_BASE_URL            = "https://staging-be.lawyered.in/api/v1"
