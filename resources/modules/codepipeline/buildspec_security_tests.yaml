@@ -3,23 +3,19 @@ version: 0.2
 phases:
   install:
     commands:
-      - echo Installing dependencies...
       - pip3 install semgrep==1.68.0 fpdf2
       - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
       - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $REPOS_URL
       - SCAN_DATE=$(date +%d-%m-%Y)
       - APP_NAME=$(echo $PIPELINE_NAME | sed 's/-pipeline$//')
       - SCAN_FOLDER="DevSecOps-Reports-Folder/${APP_NAME}-reports/${SCAN_DATE}-${IMAGE_TAG}"
-      - echo "Setting up SSH key for git fetch..."
       - mkdir -p ~/.ssh
       - aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa
       - chmod 600 ~/.ssh/id_rsa
       - ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - echo "Configuring git and fetching history..."
       - git init
       - git remote add origin git@github.com:$REPOSITORY_ID.git
       - |
@@ -50,16 +46,13 @@ phases:
           echo "Running full Semgrep scan..."
           semgrep scan --config=auto --sarif --output semgrep.sarif || true
         fi
-      - echo Pulling Docker image from ECR...
       - docker pull $REPOS_URL:$IMAGE_TAG
-      - echo Generating SBOM with Syft...
       - syft docker:$REPOS_URL:$IMAGE_TAG -o json > sbom.json
       - echo Running Grype Vulnerability scan...
       - export GRYPE_DB_VALIDATE_AGE=false
       - grype docker:$REPOS_URL:$IMAGE_TAG -o sarif=grype.sarif -o json=grype.json || true
   post_build:
     commands:
-      - echo Creating PDF generation script...
       - |
         cat << 'EOF' > generate_pdf_report.py
         import sys
@@ -339,9 +332,7 @@ phases:
         if __name__ == '__main__':
             main()
         EOF
-      - echo Generating PDF reports...
       - python3 generate_pdf_report.py "$APP_NAME" "$IMAGE_TAG"
-      - echo Uploading security reports to S3...
       - aws s3 cp semgrep.sarif s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/semgrep.sarif
       - aws s3 cp sbom.json s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/sbom.json
       - aws s3 cp grype.sarif s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype.sarif
@@ -349,12 +340,10 @@ phases:
       - aws s3 cp security_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/security_report.pdf
       - aws s3 cp semgrep_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/semgrep_report.pdf
       - aws s3 cp grype_report.pdf s3://$SECURITY_REPORTS_BUCKET/$SCAN_FOLDER/grype_report.pdf
-      - echo Generating permanent S3 download URLs...
       - SEMGREP_LINK="https://${SECURITY_REPORTS_BUCKET}.s3.ap-south-1.amazonaws.com/${SCAN_FOLDER}/semgrep_report.pdf"
       - GRYPE_LINK="https://${SECURITY_REPORTS_BUCKET}.s3.ap-south-1.amazonaws.com/${SCAN_FOLDER}/grype_report.pdf"
       - SBOM_LINK="https://${SECURITY_REPORTS_BUCKET}.s3.ap-south-1.amazonaws.com/${SCAN_FOLDER}/sbom.json"
       - PDF_LINK="https://${SECURITY_REPORTS_BUCKET}.s3.ap-south-1.amazonaws.com/${SCAN_FOLDER}/security_report.pdf"
-      - echo Creating cleanup script...
       - |
         cat << 'EOF' > cleanup.py
         import sys, datetime, boto3
@@ -388,10 +377,7 @@ phases:
                         delete_keys = {'Objects': [{'Key': obj['Key']} for obj in del_page['Contents']]}
                         s3.delete_objects(Bucket=bucket_name, Delete=delete_keys)
         EOF
-      - echo Running cleanup script...
       - python3 cleanup.py "$SECURITY_REPORTS_BUCKET" "$APP_NAME"
-      - echo Cleanup finished.
-      - echo Creating gate evaluation script...
       - |
         cat << 'EOF' > evaluate_gate.py
         import json
@@ -410,9 +396,7 @@ phases:
             return values
 
         def count_grype_severities(path):
-            # Grype's own severity field (Critical/High/Medium/Low/Negligible/Unknown)
-            # from the JSON report -- unlike the SARIF report, this preserves the
-            # real CVE severity instead of collapsing everything to error/warning/note.
+            # Grype's real severity field, unlike the lossy SARIF error/warning/note levels.
             sev = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0}
             if not os.path.exists(path):
                 return sev
@@ -431,8 +415,7 @@ phases:
                 elif level == 'medium':
                     sev['medium'] += 1
                 else:
-                    # Low, Negligible and Unknown all roll into the Low gate bucket
-                    sev['low'] += 1
+                    sev['low'] += 1  # Low, Negligible, Unknown
             return sev
 
         def main():
@@ -442,9 +425,7 @@ phases:
 
             gj = count_grype_severities('grype.json')
 
-            # Critical/High CVEs share one gate bucket: an ungated "High" tier would
-            # let an unlimited number of high-severity vulnerabilities through.
-            critical_count = gj['critical'] + gj['high']
+            critical_count = gj['critical'] + gj['high']  # ungated High would be a gap
             medium_count = gj['medium'] + semgrep_medium
             low_count = gj['low'] + semgrep_low
 
@@ -471,8 +452,7 @@ phases:
                 f.write(f"MEDIUM_COUNT={medium_count}\n")
                 f.write(f"LOW_COUNT={low_count}\n")
                 f.write(f"GATE_STATUS={status}\n")
-                # Quoted: this value contains spaces and '>' -- unquoted, `source`
-                # would parse '>' as a shell redirection instead of literal text.
+                # Quoted: unquoted, `source` would parse '>' as shell redirection.
                 reasons_text = '; '.join(reasons).replace('"', '\\"')
                 f.write(f'GATE_REASONS="{reasons_text}"\n')
 
@@ -483,10 +463,8 @@ phases:
         if __name__ == '__main__':
             main()
         EOF
-      - echo Running gate evaluation...
       - python3 evaluate_gate.py
       - . ./gate_counts.env
-      - echo Fetching Slack Webhook URL from Secrets Manager...
       - SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/slack-webhook --query SecretString --output text || echo "")
       - |
         if [ "$GATE_STATUS" = "FAIL" ]; then
@@ -504,6 +482,17 @@ phases:
           }" "$SLACK_WEBHOOK_URL"
         else
           echo "Slack Webhook URL is empty or placeholder, skipping notification."
+        fi
+      - |
+        if [ "$GATE_STATUS" = "FAIL" ]; then
+          DEPLOY_SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/deployment-status-slack-webhook --query SecretString --output text || echo "")
+          if [ ! -z "$DEPLOY_SLACK_WEBHOOK_URL" ] && [ "$DEPLOY_SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
+            curl -X POST -H 'Content-type: application/json' --data "{
+              \"text\": \"❌ *Deployment Failed:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)\\nBlocked by security gate.\\n*Reason:* ${GATE_REASONS}\"
+            }" "$DEPLOY_SLACK_WEBHOOK_URL"
+          else
+            echo "Deploy webhook empty/placeholder, skipping."
+          fi
         fi
       - |
         if [ "$GATE_STATUS" = "FAIL" ]; then

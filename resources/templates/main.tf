@@ -650,6 +650,7 @@ resource "aws_iam_role_policy" "devsecops" {
         Effect = "Allow"
         Resource = [
           aws_secretsmanager_secret.slack_webhook.arn,
+          aws_secretsmanager_secret.deployment_status_slack_webhook.arn,
           aws_secretsmanager_secret.github_ssh_key.arn
         ]
       }
@@ -1070,6 +1071,26 @@ resource "aws_secretsmanager_secret" "slack_webhook" {
   name                    = "devsecops/slack-webhook"
   description             = "Slack Incoming Webhook URL for DevSecOps alerts"
   recovery_window_in_days = 0
+}
+
+# -------------------------------------------------------------------
+# AWS Secrets Manager Secret for Deployment Status Slack Webhook URL
+# Developer-facing channel: deployment blocked (with reason) / deployment
+# succeeded -- separate from the DevSecOps report channel above.
+# -------------------------------------------------------------------
+resource "aws_secretsmanager_secret" "deployment_status_slack_webhook" {
+  name                    = "devsecops/deployment-status-slack-webhook"
+  description             = "Slack Incoming Webhook URL for developer-facing deployment status alerts"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "deployment_status_slack_webhook" {
+  secret_id     = aws_secretsmanager_secret.deployment_status_slack_webhook.id
+  secret_string = "https://hooks.slack.com/services/PLACEHOLDER"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 # -------------------------------------------------------------------

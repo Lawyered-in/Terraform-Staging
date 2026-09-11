@@ -320,6 +320,23 @@ resource "aws_codebuild_project" "security_scan" {
 # SecurityScan stage has passed, instead of from inside the Build stage.
 # Only created when enable_gated_deploy is true.
 # -------------------------------------------------------------------
+locals {
+  deploy_app_name = trimsuffix(var.pipeline_name, "-pipeline")
+
+  # Built with jsonencode so Terraform (not hand-written escapes) handles all
+  # JSON/backtick escaping correctly; __IMAGE_TAG__ is swapped in at runtime
+  # via bash parameter expansion since the tag isn't known until the build runs.
+  deploy_success_payload_template = jsonencode({
+    text = "✅ *Deployment Successful:* `${local.deploy_app_name}` (`__IMAGE_TAG__`)\nPassed the security gate and is deploying. Changes should be live within ~2 minutes."
+  })
+
+  deploy_notify_commands = [
+    "echo Fetching Deployment Status Slack Webhook URL from Secrets Manager...",
+    "DEPLOY_SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/deployment-status-slack-webhook --query SecretString --output text || echo \"\")",
+    "if [ ! -z \"$DEPLOY_SLACK_WEBHOOK_URL\" ] && [ \"$DEPLOY_SLACK_WEBHOOK_URL\" != \"https://hooks.slack.com/services/PLACEHOLDER\" ]; then echo Sending deployment-succeeded alert to Slack...; PAYLOAD='${local.deploy_success_payload_template}'; PAYLOAD=$${PAYLOAD/__IMAGE_TAG__/$IMAGE_TAG}; curl -X POST -H 'Content-type: application/json' --data \"$PAYLOAD\" \"$DEPLOY_SLACK_WEBHOOK_URL\"; else echo \"Deployment Status Slack Webhook URL is empty or placeholder, skipping notification.\"; fi"
+  ]
+}
+
 resource "aws_codebuild_project" "deploy" {
   count        = var.enable_gated_deploy && var.enable_security_scan ? 1 : 0
   name         = "${var.pipeline_name}-deploy"
@@ -348,21 +365,24 @@ resource "aws_codebuild_project" "deploy" {
       version = 0.2
       phases = {
         post_build = {
-          commands = var.custom_deploy_commands != null ? var.custom_deploy_commands : [
-            "echo Deploying $REPOS_URL:$IMAGE_TAG for ${var.pipeline_name}...",
-            "mkdir -p ~/.ssh",
-            "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
-            "chmod 600 ~/.ssh/id_rsa",
-            "ssh-keyscan github.com >> ~/.ssh/known_hosts",
-            "echo Cloning k8s-manifest repo...",
-            "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
-            "cd /tmp/k8s-manifest && git checkout ${var.manifest_branch}",
-            "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
-            "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
-            "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
-            "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
-            "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
-          ]
+          commands = concat(
+            var.custom_deploy_commands != null ? var.custom_deploy_commands : [
+              "echo Deploying $REPOS_URL:$IMAGE_TAG for ${var.pipeline_name}...",
+              "mkdir -p ~/.ssh",
+              "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+              "chmod 600 ~/.ssh/id_rsa",
+              "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+              "echo Cloning k8s-manifest repo...",
+              "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+              "cd /tmp/k8s-manifest && git checkout ${var.manifest_branch}",
+              "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" ${var.manifest_file_path}/deployment.yaml",
+              "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+              "cd /tmp/k8s-manifest && git add ${var.manifest_file_path}/deployment.yaml",
+              "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+              "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
+            ],
+            local.deploy_notify_commands
+          )
         }
       }
     })
