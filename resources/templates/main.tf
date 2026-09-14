@@ -1086,6 +1086,28 @@ resource "aws_secretsmanager_secret_version" "deployment_status_slack_webhook" {
 }
 
 # -------------------------------------------------------------------
+# AWS Secrets Manager Secret for Build Status Slack Webhook URL
+# Build-stage channel: notifies as soon as the Docker build succeeds
+# (pipeline moving on to Security Scan/Deploy) or fails (with the
+# CodeBuild-reported failure reason) -- catches failures before the
+# pipeline ever reaches the security scan / deployment status channel.
+# -------------------------------------------------------------------
+resource "aws_secretsmanager_secret" "build_status_slack_webhook" {
+  name                    = "devsecops/build-status-slack-webhook"
+  description             = "Slack Incoming Webhook URL for build-stage status alerts"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "build_status_slack_webhook" {
+  secret_id     = aws_secretsmanager_secret.build_status_slack_webhook.id
+  secret_string = "https://hooks.slack.com/services/PLACEHOLDER"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
+# -------------------------------------------------------------------
 # End of Resources
 # -------------------------------------------------------------------
 

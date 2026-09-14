@@ -119,6 +119,13 @@ resource "aws_iam_role_policy" "build" {
         Action   = ["secretsmanager:GetSecretValue"]
         Effect   = "Allow"
         Resource = "*"
+      },
+      {
+        # Lets the build-stage finally block ask CodeBuild for the exact
+        # failure reason of a failed phase, instead of scraping log output.
+        Action   = ["codebuild:BatchGetBuilds"]
+        Effect   = "Allow"
+        Resource = aws_codebuild_project.this.arn
       }
     ]
   })
@@ -128,6 +135,45 @@ resource "aws_iam_role_policy" "build" {
 # CodeBuild Project
 # -------------------------------------------------------------------
 data "aws_region" "current" {}
+
+# -------------------------------------------------------------------
+# Build-stage Slack notifications
+# Runs from post_build's `finally` section, which CodeBuild guarantees
+# to execute even when pre_build/build failed and their own commands
+# were skipped -- so this fires exactly once per build no matter which
+# phase broke. On success it tells devs the pipeline is moving on; on
+# failure it asks CodeBuild itself (via BatchGetBuilds) for the failed
+# phase's recorded reason instead of scraping raw log output.
+# -------------------------------------------------------------------
+locals {
+  build_status_next_step = var.enable_security_scan ? "Security Scan" : "Deploy"
+
+  build_notify_finally_commands = [
+    "BUILD_SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/build-status-slack-webhook --query SecretString --output text || echo \"\")",
+    "APP_NAME=$(echo $PIPELINE_NAME | sed 's/-pipeline$//')",
+    "if [ -z \"$IMAGE_TAG\" ]; then IMAGE_TAG=pending; fi",
+    <<-EOT
+    if [ ! -z "$BUILD_SLACK_WEBHOOK_URL" ] && [ "$BUILD_SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
+      if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+        curl -X POST -H 'Content-type: application/json' --data "{
+          \"text\": \"✅ *Build Succeeded:* \`$APP_NAME\` (\`$IMAGE_TAG\`)\\nPipeline is now running ${local.build_status_next_step}.\"
+        }" "$BUILD_SLACK_WEBHOOK_URL"
+      else
+        FAILED_PHASE=$(aws codebuild batch-get-builds --ids $CODEBUILD_BUILD_ID --query "builds[0].phases[?phaseStatus=='FAILED'].phaseType | [0]" --output text 2>/dev/null)
+        FAILED_REASON=$(aws codebuild batch-get-builds --ids $CODEBUILD_BUILD_ID --query "builds[0].phases[?phaseStatus=='FAILED'].contexts[0].message | [0]" --output text 2>/dev/null)
+        if [ -z "$FAILED_PHASE" ] || [ "$FAILED_PHASE" = "None" ]; then FAILED_PHASE=UNKNOWN; fi
+        if [ -z "$FAILED_REASON" ] || [ "$FAILED_REASON" = "None" ]; then FAILED_REASON="No failure detail reported by CodeBuild."; fi
+        BUILD_ID_ENCODED=$(echo "$CODEBUILD_BUILD_ID" | sed 's/:/%3A/g')
+        LOG_URL="https://${data.aws_region.current.id}.console.aws.amazon.com/codesuite/codebuild/projects/$PIPELINE_NAME-build/build/$BUILD_ID_ENCODED/log?region=${data.aws_region.current.id}"
+        SLACK_TEXT="❌ *Build Failed:* \`$APP_NAME\` (\`$IMAGE_TAG\`)\nFailed at *$FAILED_PHASE* phase.\n*Reason:* $FAILED_REASON\n🔗 <$LOG_URL|View Build Logs>"
+        jq -n --arg text "$SLACK_TEXT" '{text:$text}' | curl -X POST -H 'Content-type: application/json' --data @- "$BUILD_SLACK_WEBHOOK_URL"
+      fi
+    else
+      echo "Build Status Slack Webhook URL is empty or placeholder, skipping notification."
+    fi
+    EOT
+  ]
+}
 
 resource "aws_codebuild_project" "this" {
   name         = "${var.pipeline_name}-build"
@@ -143,6 +189,11 @@ resource "aws_codebuild_project" "this" {
     image           = var.build_image
     type            = "LINUX_CONTAINER"
     privileged_mode = true # Required for Docker builds
+
+    environment_variable {
+      name  = "PIPELINE_NAME"
+      value = var.pipeline_name
+    }
 
     environment_variable {
       name  = "ECR_REPOSITORY_URL"
@@ -224,6 +275,7 @@ resource "aws_codebuild_project" "this" {
                 "cd /tmp/k8s-manifest && git push origin ${var.manifest_branch}"
               ]
             )
+            finally = local.build_notify_finally_commands
           }
         }
         artifacts = {
