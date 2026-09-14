@@ -649,7 +649,6 @@ resource "aws_iam_role_policy" "devsecops" {
         ]
         Effect = "Allow"
         Resource = [
-          aws_secretsmanager_secret.slack_webhook.arn,
           aws_secretsmanager_secret.deployment_status_slack_webhook.arn,
           aws_secretsmanager_secret.github_ssh_key.arn
         ]
@@ -1065,18 +1064,11 @@ module "bedrock" {
 }
 
 # -------------------------------------------------------------------
-# AWS Secrets Manager Secret for Slack Alerts Webhook URL
-# -------------------------------------------------------------------
-resource "aws_secretsmanager_secret" "slack_webhook" {
-  name                    = "devsecops/slack-webhook"
-  description             = "Slack Incoming Webhook URL for DevSecOps alerts"
-  recovery_window_in_days = 0
-}
-
-# -------------------------------------------------------------------
 # AWS Secrets Manager Secret for Deployment Status Slack Webhook URL
-# Developer-facing channel: deployment blocked (with reason) / deployment
-# succeeded -- separate from the DevSecOps report channel above.
+# Single developer-facing channel: deployment blocked/succeeded plus the
+# full DevSecOps security scan report (gate results, thresholds, report
+# links) -- consolidated here so developers don't have to watch a second
+# channel for the report.
 # -------------------------------------------------------------------
 resource "aws_secretsmanager_secret" "deployment_status_slack_webhook" {
   name                    = "devsecops/deployment-status-slack-webhook"

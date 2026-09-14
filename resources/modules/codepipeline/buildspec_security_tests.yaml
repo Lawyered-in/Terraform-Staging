@@ -465,34 +465,25 @@ phases:
         EOF
       - python3 evaluate_gate.py
       - . ./gate_counts.env
-      - SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/slack-webhook --query SecretString --output text || echo "")
+      - DEPLOY_SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/deployment-status-slack-webhook --query SecretString --output text || echo "")
       - |
         if [ "$GATE_STATUS" = "FAIL" ]; then
           HEADER="🚫 *DEPLOYMENT BLOCKED — Security Gate Failed:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)"
           RESULT_LINE="⚠️ Thresholds breached: ${GATE_REASONS}"
+          FOOTER="\\n\\n❌ *Deployment Failed:* Please fix the issues above to deploy your changes. Thank you!"
         else
           HEADER="✅ *Security Gate Passed:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)"
           RESULT_LINE="✅ All findings within allowed thresholds"
+          FOOTER=""
         fi
       - |
-        if [ ! -z "$SLACK_WEBHOOK_URL" ] && [ "$SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
+        if [ ! -z "$DEPLOY_SLACK_WEBHOOK_URL" ] && [ "$DEPLOY_SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
           echo "Sending scan status alert to Slack..."
           curl -X POST -H 'Content-type: application/json' --data "{
-            \"text\": \"${HEADER}\\n--------------------------------------------------\\n*🔑 Security Gates:*\\n  ✅ SAST Scan (Semgrep) completed -- <${SEMGREP_LINK}|Download Semgrep Report>\\n  ✅ Dependency Scan (Grype) completed -- <${GRYPE_LINK}|Download Grype Report>\\n  ✅ SBOM Generation (Syft) completed -- <${SBOM_LINK}|Download SBOM>\\n\\n*📈 Results:* ${RESULT_LINE}\\n  🔴 Critical/High: \`${CRITICAL_COUNT}\` (max ${CRITICAL_THRESHOLD})  |  🟡 Medium: \`${MEDIUM_COUNT}\` (max ${MEDIUM_THRESHOLD})  |  🟢 Low: \`${LOW_COUNT}\` (max ${LOW_THRESHOLD})\\n\\n*🔗 Artifacts:*\\n  📄 Consolidated Report: <${PDF_LINK}|Download PDF>\\n  📂 S3 Directory: <https://s3.console.aws.amazon.com/s3/buckets/${SECURITY_REPORTS_BUCKET}?prefix=${SCAN_FOLDER}/|View S3 Folder>\"
-          }" "$SLACK_WEBHOOK_URL"
+            \"text\": \"${HEADER}\\n--------------------------------------------------\\n*🔑 Security Gates:*\\n  ✅ SAST Scan (Semgrep) completed -- <${SEMGREP_LINK}|Download Semgrep Report>\\n  ✅ Dependency Scan (Grype) completed -- <${GRYPE_LINK}|Download Grype Report>\\n  ✅ SBOM Generation (Syft) completed -- <${SBOM_LINK}|Download SBOM>\\n\\n*📈 Results:* ${RESULT_LINE}\\n  🔴 Critical/High: \`${CRITICAL_COUNT}\` (max ${CRITICAL_THRESHOLD})  |  🟡 Medium: \`${MEDIUM_COUNT}\` (max ${MEDIUM_THRESHOLD})  |  🟢 Low: \`${LOW_COUNT}\` (max ${LOW_THRESHOLD})\\n\\n*🔗 Artifacts:*\\n  📄 Consolidated Report: <${PDF_LINK}|Download PDF>\\n  📂 S3 Directory: <https://s3.console.aws.amazon.com/s3/buckets/${SECURITY_REPORTS_BUCKET}?prefix=${SCAN_FOLDER}/|View S3 Folder>${FOOTER}\"
+          }" "$DEPLOY_SLACK_WEBHOOK_URL"
         else
-          echo "Slack Webhook URL is empty or placeholder, skipping notification."
-        fi
-      - |
-        if [ "$GATE_STATUS" = "FAIL" ]; then
-          DEPLOY_SLACK_WEBHOOK_URL=$(aws secretsmanager get-secret-value --secret-id devsecops/deployment-status-slack-webhook --query SecretString --output text || echo "")
-          if [ ! -z "$DEPLOY_SLACK_WEBHOOK_URL" ] && [ "$DEPLOY_SLACK_WEBHOOK_URL" != "https://hooks.slack.com/services/PLACEHOLDER" ]; then
-            curl -X POST -H 'Content-type: application/json' --data "{
-              \"text\": \"❌ *Deployment Failed:* \`${APP_NAME}\` (\`${IMAGE_TAG}\`)\\nBlocked by security gate.\\n*Reason:* ${GATE_REASONS}\"
-            }" "$DEPLOY_SLACK_WEBHOOK_URL"
-          else
-            echo "Deploy webhook empty/placeholder, skipping."
-          fi
+          echo "Deployment Status Slack Webhook URL is empty or placeholder, skipping notification."
         fi
       - |
         if [ "$GATE_STATUS" = "FAIL" ]; then
