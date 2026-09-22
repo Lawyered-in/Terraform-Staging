@@ -635,8 +635,10 @@ codepipelines = {
       "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
       "cd /tmp/k8s-manifest && git checkout staging",
       "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-api-challans/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-api-challans/migration-job.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|name: api-challans-migrate-.*|name: api-challans-migrate-$IMAGE_TAG|g\" deployments/stg-api-challans/migration-job.yaml",
       "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
-      "cd /tmp/k8s-manifest && git add deployments/stg-api-challans/deployment.yaml",
+      "cd /tmp/k8s-manifest && git add deployments/stg-api-challans/deployment.yaml deployments/stg-api-challans/migration-job.yaml",
       "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
       "cd /tmp/k8s-manifest && git push origin staging"
     ]
