@@ -1,0 +1,74 @@
+# The payoff for splitting PDF extraction into its own pod: it can be locked
+# to Postgres + Redis + S3 egress only, with no general internet access. Do
+# NOT reuse stg-prosper-be-worker's egress needs here (SES, AMFI, BSE StarMF,
+# penny-drop, SFTP) — applying that list throws away the reason this exists.
+#
+# ⚠️ VERIFY BEFORE RELYING ON THIS: standard AWS VPC CNI does not enforce
+# NetworkPolicy unless the cluster has Calico, Cilium, or VPC CNI's own
+# `ENABLE_NETWORK_POLICY=true` network policy feature turned on. Confirm one
+# of those is active on this EKS cluster (`kubectl get pods -n kube-system`
+# for a calico-node / cilium daemonset, or check the aws-node addon config) —
+# otherwise this file is applied but silently does nothing, and egress is
+# unrestricted despite this manifest existing.
+#
+# ⚠️ ALSO FIX BEFORE THIS IS SAFE TO CALL "isolated": the Postgres block below
+# is a placeholder. Confirm whether Postgres is in-cluster or RDS:
+#   - RDS (likely, given no postgres/ dir exists in this repo): replace the
+#     `postgres` block with an `ipBlock` for the RDS endpoint's CIDR — do NOT
+#     rely on a wide VPC CIDR if the DB shares a subnet with other services
+#     this pod must not reach.
+#   - In-cluster: replace with the correct namespace + podSelector, same
+#     pattern as the redis block below.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stg-prosper-be-pdf-worker
+  namespace: stg
+spec:
+  podSelector:
+    matchLabels:
+      app: stg-prosper-be-pdf-worker
+  policyTypes: [Ingress, Egress]
+  # Nothing may reach this pod. It has no Service and no listening socket;
+  # this states that as policy rather than relying on it.
+  ingress: []
+  egress:
+    # --- Postgres --- PLACEHOLDER, see the warning above. Replace with the
+    # actual RDS endpoint CIDR (or in-cluster selector) before applying.
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8 # TODO: narrow to the RDS instance's actual /32 or subnet CIDR
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    # --- Redis --- Bitnami chart release `stg-prosper-be-redis`, deployed by
+    # argocd_manifest/../stg-prosper-be-redis.yaml into the `redis` namespace
+    # (NOT `stg` — cross-namespace, hence the namespaceSelector).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redis
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stg-prosper-be-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+
+    # --- S3 / object storage --- Narrow this to your S3 VPC endpoint's
+    # prefix-list CIDR rather than leaving it open to 443 everywhere, if this
+    # cluster has one.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+
+    # DNS
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

@@ -1,4 +1,4 @@
-﻿apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: stg-prosper-be
@@ -21,11 +21,20 @@ spec:
     metadata:
       labels:
         app: stg-prosper-be
+        component: api
         environment: stg
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/stg-prosper-be-api.logs: >
+          [{"source":"nodejs","service":"prosper-be-eks"}]
+        ad.datadoghq.com/stg-prosper-be-worker.logs: >
+          [{"source":"nodejs","service":"prosper-worker-eks"}]
     spec:
-      terminationGracePeriodSeconds: 30
+      # Covers the worker container's in-flight BullMQ jobs on SIGTERM. The api
+      # container has no long-running work, so this is sized for the worker.
+      terminationGracePeriodSeconds: 120
       containers:
-        - name: stg-prosper-be
+        - name: stg-prosper-be-api
           image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/prosper-be:24231c8
           imagePullPolicy: Always
           ports:
@@ -33,10 +42,101 @@ spec:
           envFrom:
             - secretRef:
                 name: prosper-be-secret
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            - name: DD_TRACE_AGENT_URL
+              value: "http://$(DD_AGENT_HOST):8126"
+            - name: DD_SERVICE
+              value: "prosper-be-eks"
+            - name: DD_ENV
+              value: "stg"
+            - name: DD_SITE
+              value: "us5.datadoghq.com"
+            - name: DD_LOGS_INJECTION
+              value: "true"
+            - name: DD_RUNTIME_METRICS_ENABLED
+              value: "true"
+            - name: DD_TRACE_ENABLED
+              value: "true"
           resources:
             requests:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "500m"
+              memory: "768Mi"
             limits:
               cpu: "1000m"
+              # Raised from 1Gi. The image sets NODE_OPTIONS=--max-old-space-size=1536
+              # (Dockerfile `production` stage); V8's heap target should stay under
+              # ~75% of the container limit, which puts the floor at ~2048Mi.
+              # Below that the kernel OOM-kills the process with no JS stack trace
+              # rather than V8 raising a catchable heap error. Mirrors the same fix
+              # already applied to stg-prosper-be-worker below.
+              memory: "2048Mi"
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+
+        - name: stg-prosper-be-worker
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/prosper-be:24231c8
+          imagePullPolicy: Always
+          command: ["dumb-init", "--", "node", "dist/worker.js"]
+          envFrom:
+            - secretRef:
+                name: prosper-be-secret
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            - name: DD_TRACE_AGENT_URL
+              value: "http://$(DD_AGENT_HOST):8126"
+            - name: DD_SERVICE
+              value: "prosper-worker-eks"
+            - name: DD_ENV
+              value: "stg"
+            - name: DD_SITE
+              value: "us5.datadoghq.com"
+            - name: DD_LOGS_INJECTION
+              value: "true"
+            - name: DD_RUNTIME_METRICS_ENABLED
+              value: "true"
+            - name: DD_TRACE_ENABLED
+              value: "true"
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pgrep -f dist/worker.js > /dev/null"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "500m"
               memory: "1Gi"
+            limits:
+              cpu: "1000m"
+              # Raised from 1Gi. The image sets NODE_OPTIONS=--max-old-space-size=1536
+              # (Dockerfile production stage); V8's heap target should stay under
+              # ~75% of the container limit, which puts the floor at ~2048Mi.
+              # Below that the kernel OOM-kills the process with no JS stack trace
+              # rather than V8 raising a catchable heap error.
+              memory: "2048Mi"

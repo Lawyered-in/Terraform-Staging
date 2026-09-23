@@ -424,6 +424,7 @@ locals {
     "lawyered-in-website",
     "lots247-in",
     "partners-portal-fe",
+    "prosper-be-pdf-worker",
     "prosper-fe",
     "qr-api",
     "subscriber-fe"

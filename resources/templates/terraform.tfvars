@@ -305,6 +305,21 @@ ecr_repositories = {
       Project     = "lawyered"
     }
   }
+  # ------------------------------------------------------------------
+  # prosper-be-pdf-worker
+  # ECR Repository for the dedicated PDF-extraction worker.
+  # Built from the `worker-pdf` Docker target in prosper-wealth/prosper-be.
+  # ------------------------------------------------------------------
+  prosper-be-pdf-worker = {
+    name                 = "prosper-be-pdf-worker"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "prosper-wealth"
+    }
+  }
 }
 # -------------------------------------------------------------------
 # Aurora Cluster Configurations
@@ -699,6 +714,20 @@ codepipelines = {
     enable_security_scan = true
     enable_gated_deploy  = true
     connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    # Explicit --target REQUIRED. Without it, docker build defaults to the
+    # LAST stage in the Dockerfile — which used to be `production` but is now
+    # `worker-pdf` (added for the PDF-extraction feature). An untargeted build
+    # here silently builds the PDF worker instead of the API/worker image, and
+    # additionally fails outright: worker-pdf needs debian:bookworm-slim and
+    # node:22-bookworm-slim from Docker Hub, neither covered by this
+    # pipeline's prefetch_images, so it 429s. See prosper-be-pdf-worker below
+    # for the equivalent explicit target on that image.
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the production Docker target...",
+      "docker build --target production -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
     custom_post_build_commands = [
       "echo Build completed on `date`",
       "echo Pushing the Docker images...",
@@ -968,6 +997,72 @@ codepipelines = {
     tags = {
       Environment = "stage"
       Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # prosper-be-pdf-worker Pipeline
+  # Dedicated CI/CD for the PDF-extraction worker.
+  # Source  : prosper-wealth/prosper-be (staging branch)
+  # Build   : docker build --target worker-pdf (multi-stage Dockerfile)
+  # Scan    : Semgrep + Grype + Syft (shared devsecops role)
+  # Deploy  : patches deployments/stg-prosper-be-pdf-worker/deployment.yaml
+  #           in k8s-manifest repo → ArgoCD auto-syncs to cluster.
+  # ------------------------------------------------------------------
+  prosper-be-pdf-worker = {
+    repository_id        = "prosper-wealth/prosper-be"
+    branch_name          = "staging"
+    ecr_key              = "prosper-be-pdf-worker"
+    # node:22-alpine is a dependency of `build` (which worker-pdf COPYs
+    # --from=), node:22-bookworm-slim is worker-pdf's own base plus
+    # prod-deps-glibc, and debian:bookworm-slim is pdf-venv's base. All three
+    # are actually in worker-pdf's dependency graph and would otherwise be
+    # resolved from Docker Hub directly and risk the same 429 that broke the
+    # prosper-be pipeline. python:3.11-slim was never referenced by any
+    # Dockerfile stage (pdf-venv installs python3 via apt on debian:bookworm-slim).
+    prefetch_images      = ["node:22-alpine", "node:22-bookworm-slim", "debian:bookworm-slim"]
+    manifest_file_path   = "deployments/stg-prosper-be-pdf-worker"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    enable_gated_deploy  = true
+    build_compute_type   = "BUILD_GENERAL1_MEDIUM"
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    build_args           = {}
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the worker-pdf Docker target...",
+      "docker build --target worker-pdf -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for prosper-be-pdf-worker...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*prosper-be-pdf-worker:.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-prosper-be-pdf-worker/deployment.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-prosper-be-pdf-worker/deployment.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
+    ]
+    tags = {
+      Environment = "stage"
+      Project     = "prosper-wealth"
       Service     = "pipeline"
     }
   }

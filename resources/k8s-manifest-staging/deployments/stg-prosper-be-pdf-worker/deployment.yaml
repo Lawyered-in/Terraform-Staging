@@ -1,0 +1,145 @@
+# Dedicated PDF extraction worker for prosper-be. The ONLY deployable carrying
+# Python. Parses untrusted files that arrive from investors by email, which is
+# why it is isolated into its own pod/Deployment/NetworkPolicy rather than a
+# third container in stg-prosper-be. See prosper-be/docs/pdf-extraction/RUNBOOK.md.
+#
+# `feature-pdf-reader` has landed on `staging` (prosper-be repo) — the
+# `worker-pdf` Docker target and `dist/pdf-worker.js` entrypoint this manifest
+# references now exist there. Still confirm an image has actually been built
+# from a commit that includes it (image tag below is a placeholder) before
+# applying.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-prosper-be-pdf-worker
+  namespace: stg
+  labels:
+    app: stg-prosper-be-pdf-worker
+    environment: stg
+spec:
+  # Safe to scale: this process registers no @Cron jobs and owns exactly one
+  # queue (tm-pdf-extraction), unlike stg-prosper-be-worker which is pinned to
+  # replicas: 1. Raise this to add extraction throughput.
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-prosper-be-pdf-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-prosper-be-pdf-worker
+        component: pdf-worker
+        environment: stg
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/stg-prosper-be-pdf-worker.logs: >
+          [{"source":"nodejs","service":"prosper-pdf-worker-eks"}]
+    spec:
+      # One document is capped at PDF_MAX_PROCESSING_MS (120s, baked into the
+      # image). Allow more so BullMQ finishes the job in hand on SIGTERM rather
+      # than leaving it to be recovered as stalled.
+      terminationGracePeriodSeconds: 150
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000 # `appuser`, created in the worker-pdf Docker stage
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: stg-prosper-be-pdf-worker
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/prosper-be-pdf-worker:TAG
+          imagePullPolicy: Always
+          # The compiled entrypoint directly — this image has no npm CLI.
+          command: ["dumb-init", "--", "node", "dist/pdf-worker.js"]
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          envFrom:
+            - secretRef:
+                name: prosper-be-secret
+            # ⚠️ VERIFY staging/prosper-be in AWS Secrets Manager does NOT define
+            # PDF_WORKER_PYTHON or PDF_WORKER_CLI. Both are baked into the image
+            # ENV (/opt/venv/bin/python, /app/workers/pdf-extractor/cli.py). A
+            # key of the same name in this secret OVERRIDES the image's ENV, and
+            # the app boots cleanly with every document then failing
+            # WORKER_UNAVAILABLE — no startup error to notice.
+            #
+            # Once docs/pdf-extraction/sql/pdf-worker-role.sql is applied
+            # (open item — see runbook §9.1), add a second secretRef here for a
+            # least-privilege DATABASE_URL, listed AFTER this one so it wins:
+            # - secretRef:
+            #     name: prosper-be-pdf-worker-secret
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+            - name: DD_TRACE_AGENT_URL
+              value: "http://$(DD_AGENT_HOST):8126"
+            - name: DD_SERVICE
+              value: "prosper-pdf-worker-eks"
+            - name: DD_ENV
+              value: "stg"
+            - name: DD_SITE
+              value: "us5.datadoghq.com"
+            - name: DD_LOGS_INJECTION
+              value: "true"
+            - name: DD_RUNTIME_METRICS_ENABLED
+              value: "true"
+            - name: DD_TRACE_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+            limits:
+              cpu: "1000m"
+              # FLOOR, not a target:
+              #   node heap 1024 (NODE_OPTIONS baked into the worker-pdf image)
+              # + 2 x python 1024 (PDF_MAX_MEMORY_MB, concurrency 2)
+              # + ~512 allocator/RSS overhead
+              # = 3584Mi, PLUS 256Mi for the in-memory /tmp below.
+              # Below this the kernel OOM-kills whichever process asks next —
+              # usually the Node process mid-job, not the Python child, so the
+              # crash looks unrelated to the document that caused it (exit 137,
+              # no application log).
+              memory: "3840Mi"
+          volumeMounts:
+            # REQUIRED. Each PDF is written to a 0700 mkdtemp under os.tmpdir()
+            # and removed in a finally. Under readOnlyRootFilesystem this write
+            # fails with EROFS on every document without this mount.
+            - name: tmp
+              mountPath: /tmp
+          # No HTTP probe, no readiness probe, no ports: this container listens
+          # on nothing and no Service points at it (by design — §7 of the
+          # runbook). Liveness proves the extraction engines still load and
+          # that cli.py can import its own package; it deliberately does not
+          # parse a PDF, so it can't consume the memory budget it protects.
+          livenessProbe:
+            exec:
+              command:
+                - /opt/venv/bin/python
+                - /app/workers/pdf-extractor/cli.py
+                - --help
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+            failureThreshold: 3
+      volumes:
+        - name: tmp
+          emptyDir:
+            # Keeps decrypted customer statements off node disk entirely, at
+            # the cost of counting against the pod memory limit (already
+            # budgeted above: 3584 + 256 = 3840Mi). Drop `medium: Memory` to
+            # use node storage and the limit comes back down to 3584Mi.
+            medium: Memory
+            sizeLimit: 256Mi
