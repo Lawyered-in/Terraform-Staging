@@ -9,27 +9,33 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:344367180480:certificate/2dfdb25d-1a08-427b-82f8-b45f94ab4fd1
-    alb.ingress.kubernetes.io/group.name: laweryerd-np-group
-    alb.ingress.kubernetes.io/group.order: "50"
-    alb.ingress.kubernetes.io/success-codes: "200,301,302,404"
-    alb.ingress.kubernetes.io/load-balancer-name: lawyered-ingress-alb
+    # certs must be in the SAME AWS account as this ALB, covering
+    # staging.finvica.com, *.staging.finvica.com, staging-api.finvica.com
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:344367180480:certificate/7279e03f-1e43-4721-9259-761a40830f2c,arn:aws:acm:ap-south-1:344367180480:certificate/2dfdb25d-1a08-427b-82f8-b45f94ab4fd1
+    alb.ingress.kubernetes.io/group.name: laweryerd-np-group        # not shared with prod
+    alb.ingress.kubernetes.io/group.order: "70"
+    alb.ingress.kubernetes.io/load-balancer-name: lawyered-ingress-alb       
+    alb.ingress.kubernetes.io/success-codes: "200"
 spec:
   rules:
-
-  # ── staging.finvica.com → prosper frontend ─────────────────────────────────
   - host: staging.finvica.com
     http:
       paths:
+        - path: /api
+          pathType: Prefix
+          backend:
+            service:
+              name: stg-prosper-be
+              port:
+                number: 80
         - path: /
           pathType: Prefix
           backend:
             service:
-              name: stg-prosper-fe
+              name: stg-finvica-web
               port:
                 number: 80
 
-  # ── staging-api.finvica.com → prosper backend ──────────────────────────────
   - host: staging-api.finvica.com
     http:
       paths:
@@ -41,3 +47,31 @@ spec:
               port:
                 number: 80
 
+  - host: finvolve.staging.finvica.com
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: stg-faas-fe
+              port:
+                number: 80
+
+  - host: "*.staging.finvica.com"
+    http:
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend:
+            service:
+              name: stg-prosper-be
+              port:
+                number: 80
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: stg-prosper-fe
+              port:
+                number: 80

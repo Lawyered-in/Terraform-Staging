@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: faas-be-migrate-latest
+  namespace: stg
+  annotations:
+    # Runs before every ArgoCD sync — ensures DB schema is up-to-date before
+    # the new deployment rolls out. BeforeHookCreation deletes the previous
+    # Job so ArgoCD can create a fresh one each deploy.
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-options: ServerSideApply=false
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: db-migrate
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/faas-be:latest
+          # Runs: node dist/scripts/migrate.js (Drizzle ORM migrations)
+          command: ["node", "dist/scripts/migrate.js"]
+          envFrom:
+            - secretRef:
+                name: faas-be-secret
+          env:
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

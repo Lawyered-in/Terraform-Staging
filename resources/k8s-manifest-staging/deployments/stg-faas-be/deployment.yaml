@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-faas-be
+  namespace: stg
+  labels:
+    app: stg-faas-be
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-faas-be
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-faas-be
+        component: api
+        environment: stg
+    spec:
+      # Covers in-flight BullMQ jobs on SIGTERM in the worker container.
+      # The API container has no long-running work; sized for the worker.
+      terminationGracePeriodSeconds: 120
+      containers:
+        # ── API container ────────────────────────────────────────────────────
+        - name: stg-faas-be-api
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/faas-be:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: faas-be-secret
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: "production"
+            # Puppeteer: use distro Chromium, skip download, keep tmp dirs writable
+            - name: PUPPETEER_SKIP_DOWNLOAD
+              value: "true"
+            - name: PUPPETEER_EXECUTABLE_PATH
+              value: "/usr/bin/chromium"
+            - name: XDG_CONFIG_HOME
+              value: "/tmp/.chromium"
+            - name: XDG_CACHE_HOME
+              value: "/tmp/.chromium"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              # Chromium render + NestJS heap. Raise if OOM-kills occur.
+              memory: "1536Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 2
+
+        # ── Worker container (BullMQ job processor) ──────────────────────────
+        # Runs dist/worker instead of dist/main — same image, different entry.
+        # procps is installed in the image so pgrep works for the liveness probe.
+        - name: stg-faas-be-worker
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/faas-be:latest
+          imagePullPolicy: Always
+          command: ["dumb-init", "--", "node", "dist/worker.js"]
+          envFrom:
+            - secretRef:
+                name: faas-be-secret
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: "production"
+            - name: PUPPETEER_SKIP_DOWNLOAD
+              value: "true"
+            - name: PUPPETEER_EXECUTABLE_PATH
+              value: "/usr/bin/chromium"
+            - name: XDG_CONFIG_HOME
+              value: "/tmp/.chromium"
+            - name: XDG_CACHE_HOME
+              value: "/tmp/.chromium"
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pgrep -f dist/worker.js > /dev/null"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1536Mi"

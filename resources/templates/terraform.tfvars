@@ -320,6 +320,36 @@ ecr_repositories = {
       Project     = "prosper-wealth"
     }
   }
+  # ------------------------------------------------------------------
+  # faas-fe
+  # ECR Repository for the FaaS frontend SPA (Vite/React, served by Nginx).
+  # Runtime env vars are injected at container start via entrypoint envsubst.
+  # ------------------------------------------------------------------
+  faas-fe = {
+    name                 = "faas-fe"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "prosper-wealth"
+    }
+  }
+  # ------------------------------------------------------------------
+  # faas-be
+  # ECR Repository for the FaaS backend (NestJS + Drizzle ORM + BullMQ).
+  # Includes Chromium for PDF rendering via Puppeteer.
+  # ------------------------------------------------------------------
+  faas-be = {
+    name                 = "faas-be"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "prosper-wealth"
+    }
+  }
 }
 # -------------------------------------------------------------------
 # Aurora Cluster Configurations
@@ -698,6 +728,66 @@ codepipelines = {
     }
   }
   # ------------------------------------------------------------------
+  # faas-be
+  # GitHub Org : prosper-wealth
+  # Branch     : staging
+  # NestJS backend — includes Chromium/Puppeteer, BullMQ worker, Drizzle ORM.
+  # Has a separate worker entrypoint (dist/worker.js) in the same image.
+  # Migration job runs node dist/scripts/migrate.js as ArgoCD PreSync hook.
+  # ------------------------------------------------------------------
+  faas-be = {
+    repository_id        = "prosper-wealth/faas-be"
+    branch_name          = "staging"
+    ecr_key              = "faas-be"
+    # node:22-trixie-slim is the base for all stages (build, prod-deps, runtime).
+    # Chromium and apt packages are installed at runtime stage — no extra prefetch needed.
+    prefetch_images      = ["node:22-trixie-slim"]
+    manifest_file_path   = "deployments/stg-faas-be"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    enable_gated_deploy  = true
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    build_args           = {}
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the faas-be Docker image...",
+      "docker build -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for faas-be...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*faas-be:.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-faas-be/deployment.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*faas-be:.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-faas-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && sed -i \"s|name: faas-be-migrate-.*|name: faas-be-migrate-$IMAGE_TAG|g\" deployments/stg-faas-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-faas-be/deployment.yaml deployments/stg-faas-be/migration-job.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
+    ]
+    tags = {
+      Environment = "stage"
+      Project     = "prosper-wealth"
+      Service     = "pipeline"
+    }
+  }
+  # ------------------------------------------------------------------
   # prosper-be
   # GitHub Org : prosper-wealth
   # Branch     : staging
@@ -1057,6 +1147,83 @@ codepipelines = {
       "cd /tmp/k8s-manifest && sed -i \"s|image: .*prosper-be-pdf-worker:.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-prosper-be-pdf-worker/deployment.yaml",
       "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
       "cd /tmp/k8s-manifest && git add deployments/stg-prosper-be-pdf-worker/deployment.yaml",
+      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
+      "cd /tmp/k8s-manifest && git push origin staging"
+    ]
+    tags = {
+      Environment = "stage"
+      Project     = "prosper-wealth"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # faas-fe Pipeline
+  # Manages CI/CD for faas-fe (Vite/React SPA served by Nginx on port 3000).
+  # Source  : prosper-wealth/faas-fe (staging branch)
+  # Build   : docker build (multi-stage: node:24-alpine build → nginx:1.30-alpine runtime)
+  # Env     : ARGs are declared in the runtime stage and baked as ENV vars into the image.
+  #           docker-entrypoint.sh then uses envsubst on runtime-config.template.js at
+  #           container start — so the JS bundle itself is env-agnostic, but the image is not.
+  # Scan    : Semgrep + Grype + Syft (shared devsecops role)
+  # Deploy  : patches deployments/stg-faas-fe/deployment.yaml
+  #           in k8s-manifest repo → ArgoCD auto-syncs to cluster.
+  # ------------------------------------------------------------------
+  faas-fe = {
+    repository_id        = "prosper-wealth/faas-fe"
+    branch_name          = "staging"
+    ecr_key              = "faas-fe"
+    # node:24-alpine is the build stage base; nginx:1.30-alpine is the runtime base.
+    # Prefetching prevents Docker Hub 429 rate-limit errors during CodeBuild.
+    prefetch_images      = ["node:24-alpine", "nginx:1.30-alpine"]
+    manifest_file_path   = "deployments/stg-faas-fe"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    enable_gated_deploy  = true
+    build_compute_type   = "BUILD_GENERAL1_SMALL"
+    connection_arn       = "arn:aws:codeconnections:ap-south-1:344367180480:connection/c262ed12-f5b1-493e-b971-52d70e33bfca"
+    # All 8 ARGs declared in the Dockerfile runtime stage.
+    # These are passed via --build-arg and baked as ENV vars into the nginx image.
+    # The entrypoint (docker-entrypoint.sh) uses envsubst to write them into
+    # runtime-config.js at container start.
+    build_args = {
+      VITE_API_URL              = "https://staging-be.prosperwealth.ai/api/v1"
+      VITE_APP_NAME             = "FaaS"
+      VITE_NODE_ENV             = "staging"
+      VITE_ENABLE_DEVTOOLS      = "false"
+      VITE_TENANT_BASE_DOMAIN   = "staging.finvica.com"
+      VITE_DEFAULT_TENANT_SLUG  = "finvolve"
+      VITE_TENANT_ID            = ""
+      API_UPSTREAM              = ""
+    }
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the faas-fe Docker image with runtime ARGs...",
+      "docker build --build-arg VITE_API_URL=$${VITE_API_URL} --build-arg VITE_APP_NAME=$${VITE_APP_NAME} --build-arg VITE_NODE_ENV=$${VITE_NODE_ENV} --build-arg VITE_ENABLE_DEVTOOLS=$${VITE_ENABLE_DEVTOOLS} --build-arg VITE_TENANT_BASE_DOMAIN=$${VITE_TENANT_BASE_DOMAIN} --build-arg VITE_DEFAULT_TENANT_SLUG=$${VITE_DEFAULT_TENANT_SLUG} --build-arg VITE_TENANT_ID=$${VITE_TENANT_ID} --build-arg API_UPSTREAM=$${API_UPSTREAM} -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
+    custom_post_build_commands = [
+      "echo Build completed on `date`",
+      "echo Pushing the Docker images...",
+      "docker push $REPOS_URL:latest",
+      "docker push $REPOS_URL:$IMAGE_TAG",
+      "echo Writing image definitions file...",
+      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
+    ]
+    custom_deploy_commands = [
+      "echo Deploying $REPOS_URL:$IMAGE_TAG for faas-fe...",
+      "mkdir -p ~/.ssh",
+      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
+      "chmod 600 ~/.ssh/id_rsa",
+      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
+      "echo Cloning k8s-manifest repo...",
+      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
+      "cd /tmp/k8s-manifest && git checkout staging",
+      "cd /tmp/k8s-manifest && sed -i \"s|image: .*faas-fe:.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-faas-fe/deployment.yaml",
+      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
+      "cd /tmp/k8s-manifest && git add deployments/stg-faas-fe/deployment.yaml",
       "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
       "cd /tmp/k8s-manifest && git push origin staging"
     ]

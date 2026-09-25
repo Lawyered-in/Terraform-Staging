@@ -1,0 +1,15 @@
+architecture: standalone
+
+auth:
+  enabled: true
+  # Store password in faas-be-secret and reference via REDIS_URL or REDIS_PASSWORD
+  password: "FaAsReDiS2026!#stg"
+
+master:
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: "ebs-sc"
+
+replica:
+  replicaCount: 0
