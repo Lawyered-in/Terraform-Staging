@@ -931,7 +931,8 @@ codepipelines = {
       VITE_METABASE_DASHBOARD_ID  = "70"
       VITE_METABASE_SECRET_KEY    = "4a875a120d779fdc5f1a9b740a3b21fa28a0c21694371ad23de0fa4cbb59f502"
       VITE_METABASE_TOKEN_EXPIRY_SECONDS = "600"
-    }
+      VITE_MEDIA_CDN_URL          = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev"
+      }
 
     tags = {
       Environment = "stage"
