@@ -9,7 +9,7 @@ metadata:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:344367180480:certificate/ed6f5e4a-e23f-4512-ba8c-e1a2441e0d4d
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:344367180480:certificate/ed6f5e4a-e23f-4512-ba8c-e1a2441e0d4d,arn:aws:acm:ap-south-1:344367180480:certificate/b01efb05-a652-48b4-a6db-d60352c7eea6
     alb.ingress.kubernetes.io/group.name: laweryerd-np-group
     alb.ingress.kubernetes.io/group.order: "80"
     alb.ingress.kubernetes.io/load-balancer-name: lawyered-ingress-alb
@@ -24,5 +24,16 @@ spec:
             backend:
               service:
                 name: stg-faas-be
+                port:
+                  number: 80
+
+    - host: finvolve.staging.prosperwealth.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stg-faas-fe
                 port:
                   number: 80
