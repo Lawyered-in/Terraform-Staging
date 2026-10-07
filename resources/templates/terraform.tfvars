@@ -411,7 +411,7 @@ rds_instances = {
   }
 }
 
-github_connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/57bb41a6-94e5-4be9-9364-73bc9da899d3"
+github_connection_arn = "arn:aws:codeconnections:ap-south-1:344367180480:connection/fb1ad737-1c8d-445b-8eff-dce63db9ef3d"
 
 codepipelines = {
   admin-lawyered-fe = {

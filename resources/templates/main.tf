@@ -299,7 +299,7 @@ module "argocd_apps" {
 # GitHub Shared Connection
 # -------------------------------------------------------------------
 resource "aws_codeconnections_connection" "github" {
-  name          = "lawyered-github-repository"
+  name          = "lawyered-github-v2"
   provider_type = "GitHub"
 }
 
