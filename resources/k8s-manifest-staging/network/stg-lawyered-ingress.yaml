@@ -22,23 +22,6 @@ spec:
     http:
       paths:
 
-        # ── CORS image paths → nginx sidecar on stg-admin-lawyered ──────────
-        # Sidecar injects CORS headers then forwards to app on :3000
-        - path: /customerAssets/images
-          pathType: Prefix
-          backend:
-            service:
-              name: stg-admin-lawyered
-              port:
-                number: 80
-
-        - path: /uploads
-          pathType: Prefix
-          backend:
-            service:
-              name: stg-admin-lawyered
-              port:
-                number: 80
 
         # ── Next.js static assets ────────────────────────────────────────────
         - path: /_next
@@ -161,14 +144,6 @@ spec:
               port:
                 number: 80
 
-        # ── Default fallback → stg-admin-lawyered ───────────────────────────
-        - path: /
-          pathType: Prefix
-          backend:
-            service:
-              name: stg-admin-lawyered
-              port:
-                number: 80
 
   # ── stg-partners.lawyered.in ───────────────────────────────────────────────
   - host: stg-partners.lawyered.in

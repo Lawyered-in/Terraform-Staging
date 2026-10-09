@@ -16,7 +16,7 @@ spec:
       helm:
         releaseName: stg-api-challans-redis
         valueFiles:
-          - $values/deployments/stg-api-challans-redis/values.yaml
+          - $values/redis-manifest/deployments/stg-api-challans-redis/values.yaml
     - repoURL: git@github.com:Lawyered-in/k8s-manifest.git
       targetRevision: staging
       ref: values

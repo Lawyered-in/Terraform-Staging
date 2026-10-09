@@ -375,7 +375,6 @@ resource "aws_secretsmanager_secret_version" "rds_secrets" {
 locals {
   prod_apps = [
     "prosper-be",
-    "admin-lawyered",
     "lawyered-be",
     "core-platform-be",
     "coworking-platform-be"

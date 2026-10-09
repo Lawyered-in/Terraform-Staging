@@ -65,7 +65,6 @@ resources/                          <-- ROOT of all infrastructure code
 |-- issues_inventory.md             <-- All problems encountered + solutions
 |
 |-- argocd-manifests/               <-- Argo CD Application YAML files
-|   |-- admin-lawyered.yaml         <-- ArgoCD app for admin-lawyered service
 |   |-- admin-lawyered-fe.yaml      <-- ArgoCD app for admin-lawyered-fe service
 |   |-- api-challans.yaml           <-- ArgoCD app for api-challans service
 |   |-- lawyered-in-website.yaml    <-- ArgoCD app for lawyered-in-website service

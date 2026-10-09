@@ -16,7 +16,7 @@ spec:
       helm:
         releaseName: stg-qr-api-redis
         valueFiles:
-          - $values/deployments/stg-qr-api-redis/values.yaml
+          - $values/redis-manifest/deployments/stg-qr-api-redis/values.yaml
     - repoURL: git@github.com:Lawyered-in/k8s-manifest.git
       targetRevision: staging
       ref: values

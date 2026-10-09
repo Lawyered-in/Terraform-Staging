@@ -16,7 +16,7 @@ spec:
       helm:
         releaseName: stg-prosper-be-redis
         valueFiles:
-          - $values/deployments/stg-prosper-be-redis/values.yaml
+          - $values/redis-manifest/deployments/stg-prosper-be-redis/values.yaml
     - repoURL: git@github.com:Lawyered-in/k8s-manifest.git
       targetRevision: staging
       ref: values

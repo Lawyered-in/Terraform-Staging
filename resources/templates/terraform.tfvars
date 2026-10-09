@@ -127,16 +127,7 @@ s3_buckets = {
 # ECR Repository Configurations
 # -------------------------------------------------------------------
 ecr_repositories = {
-  admin-lawyered = {
-    name                 = "admin-lawyered"
-    image_tag_mutability = "MUTABLE"
-    scan_on_push         = true
-    tags = {
-      Environment = "stage"
-      Owner       = "infra-team"
-      Project     = "lawyered"
-    }
-  }
+
   lawyered-in-website = {
     name                 = "lawyered-in-website"
     image_tag_mutability = "MUTABLE"
@@ -507,61 +498,7 @@ codepipelines = {
       Service     = "pipeline"
     }
   }
-  admin-lawyered = {
-    repository_id        = "Lawyered-in/admin-lawyered"
-    branch_name          = "staging"
-    ecr_key              = "admin-lawyered"
-    prefetch_images      = ["node:20-alpine"]
-    manifest_file_path   = "deployments/stg-admin-lawyered"
-    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace      = "StagingBuildNamespace"
-    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
-    enable_security_scan = true
-    enable_gated_deploy  = true
-    build_args = {
-      DATABASE_URL = "mysql://admin:E7mshc5M7L3fkAVPc2<5qRT6o6i2@lawyered-database.cluster-cj446ammul0i.ap-south-1.rds.amazonaws.com:3306/proddblawyered"
-    }
-    custom_build_commands = [
-      "echo Build started on `date`",
-      "echo Using DATABASE_URL from environment variables...",
-      "npm install",
-      "echo Installing dependencies...",
-      "npm run generate",
-      "echo Building the Docker image...",
-      "docker build -t $REPOS_URL:latest .",
-      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
-    ]
-    custom_post_build_commands = [
-      "echo Build completed on `date`",
-      "echo Pushing the Docker images...",
-      "docker push $REPOS_URL:latest",
-      "docker push $REPOS_URL:$IMAGE_TAG",
-      "echo Writing image definitions file...",
-      "printf '[{\"name\":\"container-name\",\"imageUri\":\"%s\"}]' $REPOS_URL:$IMAGE_TAG > imagedefinitions.json"
-    ]
-    custom_deploy_commands = [
-      "echo Deploying $REPOS_URL:$IMAGE_TAG for admin-lawyered...",
-      "mkdir -p ~/.ssh",
-      "aws secretsmanager get-secret-value --secret-id $GITHUB_TOKEN_SECRET_NAME --query SecretString --output text > ~/.ssh/id_rsa",
-      "chmod 600 ~/.ssh/id_rsa",
-      "ssh-keyscan github.com >> ~/.ssh/known_hosts",
-      "echo Cloning k8s-manifest repo...",
-      "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
-      "cd /tmp/k8s-manifest && git checkout staging",
-      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-admin-lawyered/deployment.yaml",
-      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-admin-lawyered/migration-job.yaml",
-      "cd /tmp/k8s-manifest && sed -i \"s|name: admin-lawyered-migrate-.*|name: admin-lawyered-migrate-$IMAGE_TAG|g\" deployments/stg-admin-lawyered/migration-job.yaml",
-      "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
-      "cd /tmp/k8s-manifest && git add deployments/stg-admin-lawyered/deployment.yaml deployments/stg-admin-lawyered/migration-job.yaml",
-      "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
-      "cd /tmp/k8s-manifest && git push origin staging"
-    ]
-    tags = {
-      Environment = "stage"
-      Project     = "lawyered"
-      Service     = "pipeline"
-    }
-  }
+
   lawyered-in-website = {
     repository_id        = "Lawyered-in/lawyered.in-website"
     branch_name          = "staging"
