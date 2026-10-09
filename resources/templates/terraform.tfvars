@@ -178,16 +178,7 @@ ecr_repositories = {
       Project     = "lawyered"
     }
   }
-  challanpay-fe-next = {
-    name                 = "challanpay-fe-next"
-    image_tag_mutability = "MUTABLE"
-    scan_on_push         = true
-    tags = {
-      Environment = "stage"
-      Owner       = "infra-team"
-      Project     = "lawyered"
-    }
-  }
+
   api-challans = {
     name                 = "api-challans"
     image_tag_mutability = "MUTABLE"
@@ -626,32 +617,6 @@ codepipelines = {
     }
   }
 
-  challanpay-fe-next = {
-    repository_id        = "Lawyered-in/challanpay-fe-next"
-    branch_name          = "staging"
-    ecr_key              = "challanpay-fe-next"
-    prefetch_images      = ["node:20-alpine"]
-    manifest_file_path   = "deployments/stg-challanpay-fe-next"
-    build_image          = "aws/codebuild/amazonlinux-x86_64-standard:5.0"
-    build_namespace      = "StagingBuildNamespace"
-    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
-    enable_security_scan = true
-    enable_gated_deploy  = true
-    build_args = {
-      NEXT_PUBLIC_R2_STORAGE_URL = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/challanpay-website-assets"
-    }
-    custom_build_commands = [
-      "echo Build started on `date`",
-      "echo Building the Docker image...",
-      "docker build --build-arg NEXT_PUBLIC_R2_STORAGE_URL=$${NEXT_PUBLIC_R2_STORAGE_URL} -t $REPOS_URL:latest .",
-      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
-    ]
-    tags = {
-      Environment = "stage"
-      Project     = "lawyered"
-      Service     = "pipeline"
-    }
-  }
   api-challans = {
     repository_id        = "Lawyered-in/api-challans"
     branch_name          = "staging"

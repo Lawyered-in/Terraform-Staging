@@ -1,4 +1,4 @@
-﻿================================================================================
+================================================================================
    LAWYERED-IN INFRASTRUCTURE — COMPLETE REPOSITORY DOCUMENTATION
    Auto-generated: April 27, 2026
    Project: AWS EKS + GitOps Infrastructure for Lawyered-in Microservices
@@ -68,7 +68,6 @@ resources/                          <-- ROOT of all infrastructure code
 |   |-- admin-lawyered.yaml         <-- ArgoCD app for admin-lawyered service
 |   |-- admin-lawyered-fe.yaml      <-- ArgoCD app for admin-lawyered-fe service
 |   |-- api-challans.yaml           <-- ArgoCD app for api-challans service
-|   |-- challanpay-fe-next.yaml     <-- ArgoCD app for challanpay-fe-next service
 |   |-- lawyered-in-website.yaml    <-- ArgoCD app for lawyered-in-website service
 |   |-- partners-portal-fe.yaml     <-- ArgoCD app for partners-portal-fe service
 |   |-- qr-api.yaml                 <-- ArgoCD app for qr-api service

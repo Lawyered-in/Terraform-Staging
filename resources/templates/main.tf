@@ -418,7 +418,6 @@ locals {
     "admin-lawyered-fe",
     "api-challans",
     "challan-screening",
-    "challanpay-fe-next",
     "challanpay-react",
     "laravel-api",
     "lawyered-in-website",
