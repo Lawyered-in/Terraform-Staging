@@ -583,10 +583,8 @@ codepipelines = {
       "git clone git@github.com:Lawyered-in/k8s-manifest.git /tmp/k8s-manifest",
       "cd /tmp/k8s-manifest && git checkout staging",
       "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-api-challans/deployment.yaml",
-      "cd /tmp/k8s-manifest && sed -i \"s|image: .*$(basename $REPOS_URL):.*|image: $REPOS_URL:$IMAGE_TAG|g\" deployments/stg-api-challans/migration-job.yaml",
-      "cd /tmp/k8s-manifest && sed -i \"s|name: api-challans-migrate-.*|name: api-challans-migrate-$IMAGE_TAG|g\" deployments/stg-api-challans/migration-job.yaml",
       "cd /tmp/k8s-manifest && git config user.email 'ci@lawyered.in' && git config user.name 'CodeBuild CI'",
-      "cd /tmp/k8s-manifest && git add deployments/stg-api-challans/deployment.yaml deployments/stg-api-challans/migration-job.yaml",
+      "cd /tmp/k8s-manifest && git add deployments/stg-api-challans/deployment.yaml",
       "cd /tmp/k8s-manifest && (git diff --cached --quiet || git commit -m 'New Build id Update for Manifest via CI/CD')",
       "cd /tmp/k8s-manifest && git push origin staging"
     ]
@@ -639,9 +637,9 @@ codepipelines = {
   # Migration job runs node dist/scripts/migrate.js as ArgoCD PreSync hook.
   # ------------------------------------------------------------------
   faas-be = {
-    repository_id        = "prosper-wealth/faas-be"
-    branch_name          = "staging"
-    ecr_key              = "faas-be"
+    repository_id = "prosper-wealth/faas-be"
+    branch_name   = "staging"
+    ecr_key       = "faas-be"
     # node:22-trixie-slim is the base for all stages (build, prod-deps, runtime).
     # Chromium and apt packages are installed at runtime stage — no extra prefetch needed.
     prefetch_images      = ["node:22-trixie-slim"]
@@ -822,20 +820,20 @@ codepipelines = {
     enable_security_scan = true
     enable_gated_deploy  = true
     build_args = {
-      VITE_API_URL                = "https://staging-be.lawyered.in/api/v1"
-      VITE_RAZORPAY_KEY           = "rzp_test_StsoJuLzSQ0KRb"
-      VITE_DATADOG_APPLICATION_ID = "9d432da4-f593-4b7e-931a-1b0ee31c855c"
-      VITE_DATADOG_CLIENT_TOKEN   = "pubea15557b6c45656c024f32591cb6c6c3"
-      VITE_DATADOG_SITE           = "us5.datadoghq.com"
-      VITE_DATADOG_SERVICE        = "subscriber-dashboard-lots247"
-      VITE_DATADOG_ENV            = "development"
-      VITE_GTM_ID                 = "GTM-PNZZHFT6"
-      VITE_METABASE_SITE_URL      = "https://analytics.lawyered.in"
-      VITE_METABASE_DASHBOARD_ID  = "70"
-      VITE_METABASE_SECRET_KEY    = "4a875a120d779fdc5f1a9b740a3b21fa28a0c21694371ad23de0fa4cbb59f502"
+      VITE_API_URL                       = "https://staging-be.lawyered.in/api/v1"
+      VITE_RAZORPAY_KEY                  = "rzp_test_StsoJuLzSQ0KRb"
+      VITE_DATADOG_APPLICATION_ID        = "9d432da4-f593-4b7e-931a-1b0ee31c855c"
+      VITE_DATADOG_CLIENT_TOKEN          = "pubea15557b6c45656c024f32591cb6c6c3"
+      VITE_DATADOG_SITE                  = "us5.datadoghq.com"
+      VITE_DATADOG_SERVICE               = "subscriber-dashboard-lots247"
+      VITE_DATADOG_ENV                   = "development"
+      VITE_GTM_ID                        = "GTM-PNZZHFT6"
+      VITE_METABASE_SITE_URL             = "https://analytics.lawyered.in"
+      VITE_METABASE_DASHBOARD_ID         = "70"
+      VITE_METABASE_SECRET_KEY           = "4a875a120d779fdc5f1a9b740a3b21fa28a0c21694371ad23de0fa4cbb59f502"
       VITE_METABASE_TOKEN_EXPIRY_SECONDS = "600"
-      VITE_MEDIA_CDN_URL          = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev"
-      }
+      VITE_MEDIA_CDN_URL                 = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev"
+    }
 
     tags = {
       Environment = "stage"
@@ -1005,9 +1003,9 @@ codepipelines = {
   #           in k8s-manifest repo → ArgoCD auto-syncs to cluster.
   # ------------------------------------------------------------------
   prosper-be-pdf-worker = {
-    repository_id        = "prosper-wealth/prosper-be"
-    branch_name          = "staging"
-    ecr_key              = "prosper-be-pdf-worker"
+    repository_id = "prosper-wealth/prosper-be"
+    branch_name   = "staging"
+    ecr_key       = "prosper-be-pdf-worker"
     # node:22-alpine is a dependency of `build` (which worker-pdf COPYs
     # --from=), node:22-bookworm-slim is worker-pdf's own base plus
     # prod-deps-glibc, and debian:bookworm-slim is pdf-venv's base. All three
@@ -1074,9 +1072,9 @@ codepipelines = {
   #           in k8s-manifest repo → ArgoCD auto-syncs to cluster.
   # ------------------------------------------------------------------
   faas-fe = {
-    repository_id        = "prosper-wealth/faas-fe"
-    branch_name          = "staging"
-    ecr_key              = "faas-fe"
+    repository_id = "prosper-wealth/faas-fe"
+    branch_name   = "staging"
+    ecr_key       = "faas-fe"
     # node:24-alpine is the build stage base; nginx:1.30-alpine is the runtime base.
     # Prefetching prevents Docker Hub 429 rate-limit errors during CodeBuild.
     prefetch_images      = ["node:24-alpine", "nginx:1.30-alpine"]
@@ -1093,14 +1091,14 @@ codepipelines = {
     # The entrypoint (docker-entrypoint.sh) uses envsubst to write them into
     # runtime-config.js at container start.
     build_args = {
-      VITE_API_URL              = "https://staging-be.prosperwealth.ai/api/v1"
-      VITE_APP_NAME             = "FaaS"
-      VITE_NODE_ENV             = "staging"
-      VITE_ENABLE_DEVTOOLS      = "false"
-      VITE_TENANT_BASE_DOMAIN   = "staging.finvica.com"
-      VITE_DEFAULT_TENANT_SLUG  = "finvolve"
-      VITE_TENANT_ID            = ""
-      API_UPSTREAM              = ""
+      VITE_API_URL             = "https://staging-be.prosperwealth.ai/api/v1"
+      VITE_APP_NAME            = "FaaS"
+      VITE_NODE_ENV            = "staging"
+      VITE_ENABLE_DEVTOOLS     = "false"
+      VITE_TENANT_BASE_DOMAIN  = "staging.finvica.com"
+      VITE_DEFAULT_TENANT_SLUG = "finvolve"
+      VITE_TENANT_ID           = ""
+      API_UPSTREAM             = ""
     }
     custom_build_commands = [
       "echo Build started on `date`",
