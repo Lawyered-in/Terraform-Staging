@@ -859,15 +859,25 @@ resource "aws_codebuild_project" "promotion" {
 }
 
 # -------------------------------------------------------------------
-# Argo CD Manifests Bootstrap (All YAMLs in argocd-manifests/)
+# Argo CD Manifests Bootstrap (k8s-manifest-staging/argocd_manifest and
+# k8s-manifest-staging/redis-manifest/argocd-redis-manifests)
 # -------------------------------------------------------------------
 locals {
-  manifest_files = fileset("${path.root}/../argocd-manifests", "**/*.yaml")
+  argocd_manifest_dirs = [
+    "${path.root}/../k8s-manifest-staging/argocd_manifest",
+    "${path.root}/../k8s-manifest-staging/redis-manifest/argocd-redis-manifests",
+  ]
+
+  manifest_files = merge([
+    for dir in local.argocd_manifest_dirs : {
+      for f in fileset(dir, "**/*.yaml") : "${basename(dir)}/${f}" => "${dir}/${f}"
+    }
+  ]...)
 }
 
 resource "kubectl_manifest" "argocd_bootstrap" {
   for_each  = local.manifest_files
-  yaml_body = file("${path.root}/../argocd-manifests/${each.value}")
+  yaml_body = file(each.value)
 
   depends_on = [module.eks_addons]
 }

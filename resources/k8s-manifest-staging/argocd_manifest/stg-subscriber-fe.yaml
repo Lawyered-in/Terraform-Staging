@@ -13,7 +13,7 @@ spec:
     repoURL: git@github.com:Lawyered-in/k8s-manifest.git
     targetRevision: staging
     path: deployments/stg-subscriber-fe
-  destination:https://github.com/Lawyered-in/k8s-manifest/blob/staging/deployments/stg-prosper-be/migration-job.yaml
+  destination:
     server: https://kubernetes.default.svc
     namespace: stg
   syncPolicy:

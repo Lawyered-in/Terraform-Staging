@@ -64,7 +64,7 @@ resources/                          <-- ROOT of all infrastructure code
 |-- JOURNAL.md                      <-- Live change log (auto-maintained)
 |-- issues_inventory.md             <-- All problems encountered + solutions
 |
-|-- argocd-manifests/               <-- Argo CD Application YAML files
+|-- k8s-manifest-staging/argocd_manifest/               <-- Argo CD Application YAML files
 |   |-- admin-lawyered-fe.yaml      <-- ArgoCD app for admin-lawyered-fe service
 |   |-- api-challans.yaml           <-- ArgoCD app for api-challans service
 |   |-- lawyered-in-website.yaml    <-- ArgoCD app for lawyered-in-website service

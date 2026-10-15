@@ -51,7 +51,7 @@ graph TD
 
 ```text
 resources/
-├── argocd-manifests/           # Argo CD Application Manifests (Managed by Terraform)
+├── k8s-manifest-staging/argocd_manifest/           # Argo CD Application Manifests (Managed by Terraform)
 │   ├── infrastructure-storage/ # Cluster-wide resources (StorageClass)
 │   ├── admin-lawyered.yaml
 │   ├── api-challans.yaml

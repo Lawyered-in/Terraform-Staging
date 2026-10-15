@@ -847,7 +847,7 @@
       │&nbsp;&nbsp;&nbsp;├── redis/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Redis deployments</span><br/>
       │&nbsp;&nbsp;&nbsp;├── s3/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># S3 buckets</span><br/>
       │&nbsp;&nbsp;&nbsp;└── vpc/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># VPC, subnets, routing</span><br/>
-      ├── argocd-manifests/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># 27 ArgoCD Application YAMLs</span><br/>
+      ├── k8s-manifest-staging/argocd_manifest/ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># 27 ArgoCD Application YAMLs</span><br/>
       └── templates/<br/>
       &nbsp;&nbsp;&nbsp;&nbsp;├── main.tf &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Root orchestration (1077 lines)</span><br/>
       &nbsp;&nbsp;&nbsp;&nbsp;├── variables.tf &nbsp;&nbsp;&nbsp;&nbsp;<span class="tree-comment"># Variable definitions</span><br/>
@@ -962,7 +962,7 @@ kubectl get application -n argo-cd &lt;app-name&gt; -o yaml</code></pre>
     <ol>
       <li>Create ECR repository entry in <code>terraform.tfvars</code> → <code>ecr_repositories</code></li>
       <li>Add pipeline config in <code>terraform.tfvars</code> → <code>codepipelines</code></li>
-      <li>Create ArgoCD manifest in <code>resources/argocd-manifests/stg-&lt;service&gt;.yaml</code></li>
+      <li>Create ArgoCD manifest in <code>resources/k8s-manifest-staging/argocd_manifest/stg-&lt;service&gt;.yaml</code></li>
       <li>Add K8s deployment manifests to <code>k8s-manifest</code> repo under <code>deployments/stg-&lt;service&gt;/</code></li>
       <li>Run <code>terraform plan</code> and <code>terraform apply</code></li>
     </ol>
