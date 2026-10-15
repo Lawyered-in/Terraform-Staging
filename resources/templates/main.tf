@@ -368,45 +368,6 @@ resource "aws_secretsmanager_secret_version" "rds_secrets" {
 }
 
 # -------------------------------------------------------------------
-# Production Application Secrets Management
-# Creates Secrets Manager resources for all 5 production microservices
-# -------------------------------------------------------------------
-
-locals {
-  prod_apps = [
-    "prosper-be",
-    "lawyered-be",
-    "core-platform-be",
-    "coworking-platform-be"
-  ]
-}
-
-# 1. Create the Secret containers in Secrets Manager under the prod/ prefix
-resource "aws_secretsmanager_secret" "prod_app_secrets" {
-  for_each                = toset(local.prod_apps)
-  name                    = "prod/${each.key}"
-  description             = "Production credentials and configurations for ${each.key}"
-  recovery_window_in_days = 0
-
-  tags = {
-    Environment = "prod"
-    Project     = "lawyered"
-    ManagedBy   = "terraform"
-  }
-}
-
-# 2. Store the actual JSON payload loaded from local file to the Secret Version
-resource "aws_secretsmanager_secret_version" "prod_app_secrets" {
-  for_each      = aws_secretsmanager_secret.prod_app_secrets
-  secret_id     = each.value.id
-  secret_string = fileexists("${path.module}/secrets/${each.key}.json") ? file("${path.module}/secrets/${each.key}.json") : "{\"DUMMY_KEY\":\"PLACEHOLDER_VALUE\"}"
-
-  lifecycle {
-    ignore_changes = [secret_string]
-  }
-}
-
-# -------------------------------------------------------------------
 # Staging Application Secrets Management
 # Creates Secrets Manager resources for the 10 missing staging microservices
 # (The other 5 backend secrets already exist in AWS and are skipped here)
