@@ -125,4 +125,16 @@ resources/
 - **Framework Support**: Corrected Vite/React build paths and integrated Build Args.
 
 ---
+
+## 🗓️ October 22, 2026
+
+### **Task: challanpay-react Support Chat Build Variables & Dynamic Build Alignment**
+- **Action**: 
+  - Added support chat build arguments (`VITE_SUPPORT_CHAT_SCRIPT_URL`, `VITE_SUPPORT_CHAT_URL`, `VITE_SUPPORT_CHAT_ENABLED`) to `challanpay-react` in `resources/templates/terraform.tfvars`.
+  - Removed hardcoded `custom_build_commands` override so the `codepipeline` module automatically and dynamically passes all defined `build_args` to `docker build`.
+  - Successfully ran `terraform apply` updating `challanpay-react-pipeline-build` CodeBuild project in-place.
+- **Outcome**: The CodeBuild buildspec now dynamically receives all 22 build arguments.
+- **Resources Changed**: `aws_codebuild_project.this` for `challanpay-react`, `kubectl_manifest.argocd_bootstrap["argocd_manifest/stg-qr-api.yaml"]`.
+
+---
 *Next entries will be appended automatically as we work.*
