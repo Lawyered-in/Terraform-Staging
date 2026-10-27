@@ -1028,6 +1028,7 @@ codepipelines = {
     build_args = {
       NEXT_PUBLIC_API_BASE_URL      = "https://staging-be.lawyered.in/api/v1"
       NEXT_PUBLIC_CHALLAN_CHECK_URL = "https://staging.challanpay.in"
+      CHALLAN_TIMES_REVALIDATE_SECRET = "hdfdkjhfdhkjhdsfaoeirukjdhfksdjf"
     }
     tags = {
       Environment = "stage"

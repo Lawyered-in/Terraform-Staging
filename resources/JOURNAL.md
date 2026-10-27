@@ -157,4 +157,16 @@ resources/
 - **Outcome**: Secret `arn:aws:secretsmanager:ap-south-1:344367180480:secret:staging/challanpay-times-mQvG9s` is active and ready for External Secrets Operator (ESO) synchronization.
 
 ---
+
+## 🗓️ October 27, 2026
+
+### **Task: challanpay-times Revalidation Secret Configuration**
+- **Action**:
+  - Added `CHALLAN_TIMES_REVALIDATE_SECRET` build argument to `codepipelines.challanpay-times.build_args` in `resources/templates/terraform.tfvars`.
+  - Executed `terraform plan` to verify CodeBuild project buildspec update and environment variable mapping.
+  - Executed `terraform apply -auto-approve` successfully updating `challanpay-times-pipeline-build` CodeBuild project in-place.
+- **Outcome**: CodeBuild project now passes `CHALLAN_TIMES_REVALIDATE_SECRET` as an environment variable and injects it into `docker build --build-arg`.
+
+---
 *Next entries will be appended automatically as we work.*
+
