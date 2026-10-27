@@ -379,6 +379,7 @@ locals {
     "api-challans",
     "challan-screening",
     "challanpay-react",
+    "challanpay-times",
     "laravel-api",
     "lawyered-in-website",
     "lots247-in",

@@ -41,3 +41,4 @@ spec:
               name: stg-challanpay-react
               port:
                 number: 80
+

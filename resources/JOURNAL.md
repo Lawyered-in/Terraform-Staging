@@ -137,4 +137,24 @@ resources/
 - **Resources Changed**: `aws_codebuild_project.this` for `challanpay-react`, `kubectl_manifest.argocd_bootstrap["argocd_manifest/stg-qr-api.yaml"]`.
 
 ---
+
+## 🗓️ October 24, 2026
+
+### **Task: challanpay-times Deployment Infrastructure & GitOps Integration**
+- **Action**:
+  - Provisioned `challanpay-times` ECR repository with automated image lifecycle policies.
+  - Configured `challanpay-times` AWS CodePipeline with pre-fetching for `node:22-alpine` (ECR Public Gallery mirroring to prevent Docker Hub 429 errors), Next.js dynamic `build_args` (`NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_CHALLAN_CHECK_URL`), DevSecOps container security scan (Trivy), and gated GitOps manifest auto-update.
+  - Created Kubernetes Deployment and ClusterIP Service manifests in `k8s-manifest-staging/deployments/stg-challanpay-times/` configured for Next.js standalone server on port 3000, non-root user `nextjs` (UID/GID 1001), health probes, resource limits, and external secret bindings.
+  - Created Argo CD Application CRD `stg-challanpay-times.yaml` with automated sync, prune, and self-healing.
+  - Configured dedicated AWS ALB Ingress `stg-challantimes-ingress.yaml` routing `staging.challantimes.in` traffic to `stg-challanpay-times`.
+  - Added ExternalSecret `challanpay-times-secret` syncing secrets from AWS Secrets Manager key `staging/challanpay-times`.
+  - Executed `terraform apply -auto-approve` successfully.
+### **Task: challanpay-times AWS Secrets Manager Provisioning**
+- **Action**:
+  - Added `challanpay-times` to `local.stg_apps` in `resources/templates/main.tf` to bring it under Terraform management.
+  - Created staging secret container `staging/challanpay-times` and version in AWS Secrets Manager (`ap-south-1`).
+  - Seeded initial environment configuration (`NODE_ENV`, `NEXT_TELEMETRY_DISABLED`, `PORT`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_CHALLAN_CHECK_URL`).
+- **Outcome**: Secret `arn:aws:secretsmanager:ap-south-1:344367180480:secret:staging/challanpay-times-mQvG9s` is active and ready for External Secrets Operator (ESO) synchronization.
+
+---
 *Next entries will be appended automatically as we work.*

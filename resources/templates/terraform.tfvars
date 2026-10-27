@@ -288,6 +288,20 @@ ecr_repositories = {
     }
   }
   # ------------------------------------------------------------------
+  # challanpay-times
+  # ECR Repository for the ChallanPay Times Next.js application.
+  # ------------------------------------------------------------------
+  challanpay-times = {
+    name                 = "challanpay-times"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "challanpay"
+    }
+  }
+  # ------------------------------------------------------------------
   # prosper-be-pdf-worker
   # ECR Repository for the dedicated PDF-extraction worker.
   # Built from the `worker-pdf` Docker target in prosper-wealth/prosper-be.
@@ -986,6 +1000,38 @@ codepipelines = {
     tags = {
       Environment = "stage"
       Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # challanpay-times Pipeline
+  # CI/CD for ChallanPay Times (Next.js 16 standalone application).
+  # Source  : Lawyered-in/challanpay-times (staging branch)
+  # Build   : multi-stage Docker build (node:22-alpine base)
+  # Args    : NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_CHALLAN_CHECK_URL
+  # Scan    : Trivy container vulnerability scan
+  # Deploy  : patches deployments/stg-challanpay-times/deployment.yaml
+  #           in k8s-manifest repo -> ArgoCD auto-syncs to EKS cluster.
+  # ------------------------------------------------------------------
+  challanpay-times = {
+    repository_id        = "Lawyered-in/challanpay-times"
+    branch_name          = "staging"
+    ecr_key              = "challanpay-times"
+    prefetch_images      = ["node:22-alpine"]
+    manifest_file_path   = "deployments/stg-challanpay-times"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    enable_gated_deploy  = true
+    build_args = {
+      NEXT_PUBLIC_API_BASE_URL      = "https://staging-be.lawyered.in/api/v1"
+      NEXT_PUBLIC_CHALLAN_CHECK_URL = "https://staging.challanpay.in"
+    }
+    tags = {
+      Environment = "stage"
+      Project     = "challantimes"
       Service     = "pipeline"
     }
   }
