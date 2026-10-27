@@ -993,8 +993,8 @@ codepipelines = {
       VITE_PAYMENT_HISTORY_PATH   = "payment-history"
       VITE_GA4_RSP_MEASUREMENT_ID = "G-D6G4GWDGL9"
       VITE_CDN_BASE_URL            = "https://pub-ac446d6e98cd462ba35be4f49108d1b8.r2.dev/challanpay-website-assets"
-      VITE_SUPPORT_CHAT_SCRIPT_URL = "https://chatbot.lawyered.in/widget.js"
-      VITE_SUPPORT_CHAT_URL        = "https://chatbot.lawyered.in"
+      VITE_SUPPORT_CHAT_SCRIPT_URL = "https://staging-chatbot.lawyered.in/widget.js"
+      VITE_SUPPORT_CHAT_URL        = "https://staging-chatbot.lawyered.in"
       VITE_SUPPORT_CHAT_ENABLED    = "true"
     }
     tags = {
