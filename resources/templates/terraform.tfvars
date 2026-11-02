@@ -302,6 +302,20 @@ ecr_repositories = {
     }
   }
   # ------------------------------------------------------------------
+  # lots247-website
+  # ECR Repository for the LOTS247 website Next.js application.
+  # ------------------------------------------------------------------
+  lots247-website = {
+    name                 = "lots247-website"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
+  # ------------------------------------------------------------------
   # prosper-be-pdf-worker
   # ECR Repository for the dedicated PDF-extraction worker.
   # Built from the `worker-pdf` Docker target in prosper-wealth/prosper-be.
@@ -1033,6 +1047,39 @@ codepipelines = {
     tags = {
       Environment = "stage"
       Project     = "challantimes"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # lots247-website Pipeline
+  # CI/CD for the LOTS247 website (Next.js 16 standalone application).
+  # Source  : Lawyered-in/lots247-website (staging branch)
+  # Build   : multi-stage Docker build (node:26-alpine base)
+  # Args    : NEXT_PUBLIC_* are inlined at build time. The Dockerfile defaults
+  #           them to production, so both must be set here for staging.
+  # Scan    : Trivy container vulnerability scan
+  # Deploy  : patches deployments/stg-lots247-website/deployment.yaml
+  #           in k8s-manifest repo -> ArgoCD auto-syncs to EKS cluster.
+  # ------------------------------------------------------------------
+  lots247-website = {
+    repository_id        = "Lawyered-in/lots247-website"
+    branch_name          = "staging"
+    ecr_key              = "lots247-website"
+    prefetch_images      = ["node:26-alpine"]
+    manifest_file_path   = "deployments/stg-lots247-website"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    enable_gated_deploy  = true
+    build_args = {
+      NEXT_PUBLIC_CMS_API_BASE_URL = "https://staging-be.lawyered.in/api/v1"
+      NEXT_PUBLIC_LOTS_SITE_URL    = "https://staging.lots247.in"
+    }
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
       Service     = "pipeline"
     }
   }

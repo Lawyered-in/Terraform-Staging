@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stg-lots247-website
+  namespace: stg
+  labels:
+    app: stg-lots247-website
+    environment: stg
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: stg-lots247-website
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: stg-lots247-website
+        environment: stg
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: stg-lots247-website
+          image: 344367180480.dkr.ecr.ap-south-1.amazonaws.com/lots247-website:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            # Next.js standalone binds to HOSTNAME; pin it so the pod name is never used.
+            - name: HOSTNAME
+              value: "0.0.0.0"
+          envFrom:
+            - secretRef:
+                name: lots247-website-secret
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # The Dockerfile HEALTHCHECK path (/healthz) returns 404, which fails a
+          # Kubernetes httpGet probe. / is prerendered, so it doesn't wait on the CMS.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

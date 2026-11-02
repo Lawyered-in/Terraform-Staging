@@ -168,5 +168,17 @@ resources/
 - **Outcome**: CodeBuild project now passes `CHALLAN_TIMES_REVALIDATE_SECRET` as an environment variable and injects it into `docker build --build-arg`.
 
 ---
+
+## 🗓️ November 2, 2026
+
+### **Task: lots247-website Deployment Files**
+- **Action**:
+  - Added `lots247-website` ECR repository and CodePipeline to `resources/templates/terraform.tfvars`, and to `local.stg_apps` in `resources/templates/main.tf`.
+  - Set `NEXT_PUBLIC_CMS_API_BASE_URL` and `NEXT_PUBLIC_LOTS_SITE_URL` as pipeline `build_args`, because the Dockerfile defaults them to production.
+  - Created Deployment, Service and HPA manifests in `k8s-manifest-staging/deployments/stg-lots247-website/` for the Next.js standalone server on port 3000, running as the image's `node` user (UID/GID 1000).
+  - Created Argo CD Application `stg-lots247-website.yaml`, ALB Ingress `stg-lots247-website-ingress.yaml` for `staging-website.lots247.in`, and ExternalSecret `lots247-website-secret`.
+- **Outcome**: Files created. `terraform apply` and the `k8s-manifest` push have not been run yet. This app runs alongside `lots247-in` and does not replace it.
+
+---
 *Next entries will be appended automatically as we work.*
 

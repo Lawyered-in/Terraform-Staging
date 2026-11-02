@@ -383,6 +383,7 @@ locals {
     "laravel-api",
     "lawyered-in-website",
     "lots247-in",
+    "lots247-website",
     "partners-portal-fe",
     "prosper-be-pdf-worker",
     "prosper-fe",

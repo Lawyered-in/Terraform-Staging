@@ -1,0 +1,51 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: stg-lots247-website-hpa
+  namespace: stg
+  labels:
+    app: stg-lots247-website
+    environment: stg
+  annotations:
+    description: "Optimized HPA - balanced for stability, performance, and cost efficiency"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: stg-lots247-website
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 30
+        - type: Pods
+          value: 2
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+        - type: Percent
+          value: 5
+          periodSeconds: 60
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+      selectPolicy: Min
