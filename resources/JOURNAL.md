@@ -180,5 +180,17 @@ resources/
 - **Outcome**: Files created. `terraform apply` and the `k8s-manifest` push have not been run yet. This app runs alongside `lots247-in` and does not replace it.
 
 ---
+
+## 🗓️ November 3, 2026
+
+### **Task: lots247-website Build Environment Variables Configuration**
+- **Action**:
+  - Added frontend environment variables (`VITE_APP_BASE_PATH`, `VITE_LOTS247_ORIGIN`, `VITE_DASHBOARD_LOGIN_URL`, `VITE_REGISTER_BASE_URL`, `VITE_CMS_API_BASE_URL`) to `codepipelines.lots247-website.build_args` in `resources/templates/terraform.tfvars`.
+  - Executed `terraform plan` to verify CodeBuild project `lots247-website-pipeline-build` environment variables and buildspec Docker build argument mapping.
+  - Executed `terraform apply -auto-approve` successfully updating `lots247-website-pipeline-build` CodeBuild project in-place.
+- **Outcome**: The CodeBuild project now injects all 7 build arguments (`NEXT_PUBLIC_CMS_API_BASE_URL`, `NEXT_PUBLIC_LOTS_SITE_URL`, `VITE_APP_BASE_PATH`, `VITE_LOTS247_ORIGIN`, `VITE_DASHBOARD_LOGIN_URL`, `VITE_REGISTER_BASE_URL`, `VITE_CMS_API_BASE_URL`) into `docker build --build-arg`.
+- **Resources Changed**: `aws_codebuild_project.this` for `lots247-website`.
+
+---
 *Next entries will be appended automatically as we work.*
 
