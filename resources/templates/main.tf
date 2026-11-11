@@ -380,6 +380,7 @@ locals {
     "challan-screening",
     "challanpay-react",
     "challanpay-times",
+    "expert-app",
     "laravel-api",
     "lawyered-in-website",
     "lots247-in",

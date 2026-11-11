@@ -214,6 +214,13 @@ resources/
 - **Outcome**: `terraform apply` succeeded: 13 added, 0 changed, 0 destroyed. Created the ECR repo, the CodePipeline (build, Trivy scan and gated deploy CodeBuild projects, IAM roles and policies, artifact S3 bucket) and the Argo CD Application `stg-expert-app`. The first pipeline run started on creation. The `k8s-manifest` push, the ingress apply and the DNS record are still pending.
 - **Resources Changed**: `module.ecr["expert-app"]`, `module.codepipeline["expert-app"]`, `kubectl_manifest.argocd_bootstrap["argocd_manifest/stg-expert-app.yaml"]`.
 
+### **Task: expert-app AWS Secrets Manager Provisioning**
+- **Action**:
+  - Added `expert-app` to `local.stg_apps` in `resources/templates/main.tf`.
+  - Seeded `resources/templates/secrets/expert-app.json` (gitignored) with `NODE_ENV`, `EXPO_NO_TELEMETRY`, `PORT`, `EXPO_PUBLIC_API_URL`.
+  - Ran `terraform apply` (2 added, 0 changed, 0 destroyed).
+- **Outcome**: Secret `arn:aws:secretsmanager:ap-south-1:344367180480:secret:staging/expert-app-h0hRIb` is active. No ExternalSecret is wired yet; the nginx image reads no runtime env, and `EXPO_PUBLIC_API_URL` still has to be set through the pipeline build args.
+
 ---
 *Next entries will be appended automatically as we work.*
 
