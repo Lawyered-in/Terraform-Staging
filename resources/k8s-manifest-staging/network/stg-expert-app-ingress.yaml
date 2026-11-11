@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stg-expert-app-ingress
+  namespace: stg
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Same *.lawyered.in certificate as stg-lawyered-ingress.
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-south-1:344367180480:certificate/98c8d8d0-1e46-4a81-967a-84555529f2c3
+    alb.ingress.kubernetes.io/group.name: laweryerd-np-group
+    alb.ingress.kubernetes.io/group.order: "20"
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/load-balancer-name: lawyered-ingress-alb
+spec:
+  rules:
+    - host: staging-experts.lawyered.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stg-expert-app
+                port:
+                  number: 80

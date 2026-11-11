@@ -316,6 +316,21 @@ ecr_repositories = {
     }
   }
   # ------------------------------------------------------------------
+  # expert-app
+  # ECR Repository for the Lawyered Experts web app (Expo static export
+  # served by nginx-unprivileged). Source: Lawyered-in/new-expert-app.
+  # ------------------------------------------------------------------
+  expert-app = {
+    name                 = "expert-app"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
+  # ------------------------------------------------------------------
   # prosper-be-pdf-worker
   # ECR Repository for the dedicated PDF-extraction worker.
   # Built from the `worker-pdf` Docker target in prosper-wealth/prosper-be.
@@ -1082,6 +1097,67 @@ codepipelines = {
       NEXT_PUBLIC_CMS_API_BASE_URL = "https://staging-be.lawyered.in/api/v1"
       NEXT_PUBLIC_LOTS_SITE_URL    = "https://staging.lots247.in"
     }
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # expert-app Pipeline
+  # CI/CD for the Lawyered Experts web app (Expo Router static web export).
+  # Native iOS/Android builds go through EAS and are NOT part of this pipeline.
+  # Source  : Lawyered-in/new-expert-app (staging branch)
+  # Build   : node:22.21.1-bookworm-slim -> `expo export --platform web`
+  #           -> nginxinc/nginx-unprivileged:1.28.0-alpine (port 8080)
+  # Args    : EXPO_PUBLIC_API_URL is inlined into the JS bundle at build
+  #           time; the Dockerfile fails the build if it is missing.
+  # Scan    : Trivy container vulnerability scan
+  # Deploy  : patches deployments/stg-expert-app/deployment.yaml
+  #           in k8s-manifest repo -> ArgoCD auto-syncs to EKS cluster.
+  #
+  # Why custom pre_build / build commands:
+  #   1. The default prefetch loop only mirrors Docker Hub *official* images
+  #      (public.ecr.aws/docker/library/*). The runtime base is
+  #      nginxinc/nginx-unprivileged, which lives at public.ecr.aws/nginx/,
+  #      so it is pulled and re-tagged explicitly here.
+  #   2. The Dockerfile uses `RUN --mount=type=cache`, which requires
+  #      BuildKit. DOCKER_BUILDKIT=1 is set explicitly so the build fails
+  #      loudly instead of silently falling back to the legacy builder.
+  # ------------------------------------------------------------------
+  expert-app = {
+    repository_id        = "Lawyered-in/new-expert-app"
+    branch_name          = "staging"
+    ecr_key              = "expert-app"
+    manifest_file_path   = "deployments/stg-expert-app"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_compute_type   = "BUILD_GENERAL1_MEDIUM" # Metro bundling OOMs on SMALL (3 GB)
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    enable_gated_deploy  = true
+    build_args = {
+      EXPO_PUBLIC_API_URL = "https://staging-be.lawyered.in/api/v1"
+    }
+    custom_pre_build_commands = [
+      "echo Logging in to Amazon ECR...",
+      "aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL",
+      "echo Pre-fetching base images from ECR Public to avoid Docker Hub rate limits...",
+      "docker pull public.ecr.aws/docker/library/node:22.21.1-bookworm-slim",
+      "docker tag public.ecr.aws/docker/library/node:22.21.1-bookworm-slim node:22.21.1-bookworm-slim",
+      "docker pull public.ecr.aws/nginx/nginx-unprivileged:1.28.0-alpine",
+      "docker tag public.ecr.aws/nginx/nginx-unprivileged:1.28.0-alpine nginxinc/nginx-unprivileged:1.28.0-alpine",
+      "REPOS_URL=$ECR_REPOSITORY_URL",
+      "COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)",
+      "IMAGE_TAG=$${COMMIT_HASH:=latest}"
+    ]
+    custom_build_commands = [
+      "echo Build started on `date`",
+      "echo Building the Expo web image with BuildKit...",
+      "DOCKER_BUILDKIT=1 docker build --target runtime --build-arg EXPO_PUBLIC_API_URL=$${EXPO_PUBLIC_API_URL} -t $REPOS_URL:latest .",
+      "docker tag $REPOS_URL:latest $REPOS_URL:$IMAGE_TAG"
+    ]
     tags = {
       Environment = "stage"
       Project     = "lawyered"
