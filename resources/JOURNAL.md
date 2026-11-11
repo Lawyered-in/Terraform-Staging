@@ -191,6 +191,14 @@ resources/
 - **Outcome**: The CodeBuild project now injects all 7 build arguments (`NEXT_PUBLIC_CMS_API_BASE_URL`, `NEXT_PUBLIC_LOTS_SITE_URL`, `VITE_APP_BASE_PATH`, `VITE_LOTS247_ORIGIN`, `VITE_DASHBOARD_LOGIN_URL`, `VITE_REGISTER_BASE_URL`, `VITE_CMS_API_BASE_URL`) into `docker build --build-arg`.
 - **Resources Changed**: `aws_codebuild_project.this` for `lots247-website`.
 
+### **Task: lots247-in (lots247.com-website) Build Variables Configuration & Re-alignment**
+- **Action**:
+  - Configured `VITE_*` environment variables (`VITE_APP_BASE_PATH`, `VITE_LOTS247_ORIGIN`, `VITE_DASHBOARD_LOGIN_URL`, `VITE_REGISTER_BASE_URL`, `VITE_CMS_API_BASE_URL`) under `codepipelines.lots247-in` in `resources/templates/terraform.tfvars` targeting repository `Lawyered-in/lots247.com-website`.
+  - Reverted `lots247-website` back to Next.js specific build parameters (`NEXT_PUBLIC_CMS_API_BASE_URL`, `NEXT_PUBLIC_LOTS_SITE_URL`).
+  - Executed `terraform apply -auto-approve` updating both `lots247-in-pipeline-build` and `lots247-website-pipeline-build` in-place.
+- **Outcome**: `lots247-in` now passes the required `VITE_*` arguments during Docker build; `lots247-website` state is restored cleanly.
+- **Resources Changed**: `aws_codebuild_project.this` for `lots247-in`, `aws_codebuild_project.this` for `lots247-website`.
+
 ---
 *Next entries will be appended automatically as we work.*
 
