@@ -18,7 +18,7 @@ metadata:
     alb.ingress.kubernetes.io/load-balancer-name: lawyered-ingress-alb
 spec:
   rules:
-    - host: staging-experts.lawyered.in
+    - host: staging-expert.lawyered.in
       http:
         paths:
           - path: /

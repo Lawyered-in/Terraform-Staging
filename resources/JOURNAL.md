@@ -209,7 +209,7 @@ resources/
   - Used `custom_pre_build_commands` to prefetch `node:22.21.1-bookworm-slim` from `public.ecr.aws/docker/library` and `nginxinc/nginx-unprivileged:1.28.0-alpine` from `public.ecr.aws/nginx`. The default prefetch loop only covers Docker Hub official images.
   - Used `custom_build_commands` with `DOCKER_BUILDKIT=1 --target runtime`, because the Dockerfile uses `RUN --mount=type=cache`. Build compute is `BUILD_GENERAL1_MEDIUM` so Metro bundling does not run out of memory.
   - Created Deployment, Service and HPA in `k8s-manifest-staging/deployments/stg-expert-app/`: nginx-unprivileged on port 8080, UID/GID 101, read-only root filesystem with a `/tmp` emptyDir, and `/healthz` probes.
-  - Created Argo CD Application `stg-expert-app.yaml` and ALB Ingress `stg-expert-app-ingress.yaml` for `staging-experts.lawyered.in` (group order 20, `*.lawyered.in` certificate).
+  - Created Argo CD Application `stg-expert-app.yaml` and ALB Ingress `stg-expert-app-ingress.yaml` for `staging-expert.lawyered.in` (group order 20, `*.lawyered.in` certificate).
   - No ExternalSecret and no `stg_apps` entry: the image serves static files only and reads no runtime env.
 - **Outcome**: `terraform apply` succeeded: 13 added, 0 changed, 0 destroyed. Created the ECR repo, the CodePipeline (build, Trivy scan and gated deploy CodeBuild projects, IAM roles and policies, artifact S3 bucket) and the Argo CD Application `stg-expert-app`. The first pipeline run started on creation. The `k8s-manifest` push, the ingress apply and the DNS record are still pending.
 - **Resources Changed**: `module.ecr["expert-app"]`, `module.codepipeline["expert-app"]`, `kubectl_manifest.argocd_bootstrap["argocd_manifest/stg-expert-app.yaml"]`.
