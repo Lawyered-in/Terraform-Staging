@@ -1030,6 +1030,7 @@ codepipelines = {
       VITE_SUPPORT_CHAT_SCRIPT_URL = "https://staging-chatbot.lawyered.in/widget.js"
       VITE_SUPPORT_CHAT_URL        = "https://staging-chatbot.lawyered.in"
       VITE_SUPPORT_CHAT_ENABLED    = "true"
+      VITE_ASHNA_BOT_URL           = "https://staging.challanpay.in/ashna-bot"
     }
     tags = {
       Environment = "stage"
