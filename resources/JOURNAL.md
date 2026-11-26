@@ -222,5 +222,16 @@ resources/
 - **Outcome**: Secret `arn:aws:secretsmanager:ap-south-1:344367180480:secret:staging/expert-app-h0hRIb` is active. No ExternalSecret is wired yet; the nginx image reads no runtime env, and `EXPO_PUBLIC_API_URL` still has to be set through the pipeline build args.
 
 ---
+
+## 🗓️ November 25, 2026
+
+### **Task: lots247-chatbot (Lawyered-in/lots247-chatbot) Deployment Files**
+- **Action**:
+  - Added `lots247-chatbot` ECR repository and CodePipeline (`staging` branch, `node:22-alpine` prefetch, Semgrep + Grype + Syft security gate, gated GitOps deploy) to `resources/templates/terraform.tfvars`, and added `"lots247-chatbot"` to `local.stg_apps` in `resources/templates/main.tf` to provision `staging/lots247-chatbot` in AWS Secrets Manager.
+  - Created Deployment, ClusterIP Service, and HPA manifests in `resources/k8s-manifest-staging/deployments/stg-lots247-chatbot/` for the Next.js 15 standalone server on port 3000 (`HOSTNAME=0.0.0.0`, non-root user `nextjs` UID/GID 1001, `/` health probes, `lots247-chatbot-secret` envFrom).
+  - Created Argo CD Application `stg-lots247-chatbot.yaml`, ExternalSecret `lots247-chatbot-secret` in `eso-files/external-secrets.yaml`, and ALB Ingress `stg-lots247-chatbot-ingress.yaml` for `staging-chatbot.lots247.in` (group order `68`, `*.lots247.in` ACM certificate).
+- **Outcome**: Deployment and infrastructure files created. `terraform apply`, AWS Secrets Manager secret population (`staging/lots247-chatbot`), `k8s-manifest` push, ESO/Ingress apply, and DNS record setup are pending.
+
+---
 *Next entries will be appended automatically as we work.*
 

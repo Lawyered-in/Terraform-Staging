@@ -316,6 +316,20 @@ ecr_repositories = {
     }
   }
   # ------------------------------------------------------------------
+  # lots247-chatbot
+  # ECR Repository for the LOTS247 AI Chatbot (Next.js 15 standalone).
+  # ------------------------------------------------------------------
+  lots247-chatbot = {
+    name                 = "lots247-chatbot"
+    image_tag_mutability = "MUTABLE"
+    scan_on_push         = true
+    tags = {
+      Environment = "stage"
+      Owner       = "infra-team"
+      Project     = "lawyered"
+    }
+  }
+  # ------------------------------------------------------------------
   # expert-app
   # ECR Repository for the Lawyered Experts web app (Expo static export
   # served by nginx-unprivileged). Source: Lawyered-in/new-expert-app.
@@ -1098,6 +1112,33 @@ codepipelines = {
       NEXT_PUBLIC_CMS_API_BASE_URL = "https://staging-be.lawyered.in/api/v1"
       NEXT_PUBLIC_LOTS_SITE_URL    = "https://staging.lots247.in"
     }
+    tags = {
+      Environment = "stage"
+      Project     = "lawyered"
+      Service     = "pipeline"
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # lots247-chatbot Pipeline
+  # CI/CD for the LOTS247 AI Chatbot (Next.js 15 standalone + Mastra + CopilotKit).
+  # Source  : Lawyered-in/lots247-chatbot (staging branch)
+  # Build   : multi-stage Docker build (node:22-alpine base)
+  # Scan    : Semgrep + Grype + Syft (shared devsecops role)
+  # Deploy  : patches deployments/stg-lots247-chatbot/deployment.yaml
+  #           in k8s-manifest repo -> ArgoCD auto-syncs to EKS cluster.
+  # ------------------------------------------------------------------
+  lots247-chatbot = {
+    repository_id        = "Lawyered-in/lots247-chatbot"
+    branch_name          = "staging"
+    ecr_key              = "lots247-chatbot"
+    prefetch_images      = ["node:22-alpine"]
+    manifest_file_path   = "deployments/stg-lots247-chatbot"
+    build_image          = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    build_namespace      = "StagingBuildNamespace"
+    exported_variables   = ["IMAGE_TAG", "REPOS_URL"]
+    enable_security_scan = true
+    enable_gated_deploy  = true
     tags = {
       Environment = "stage"
       Project     = "lawyered"

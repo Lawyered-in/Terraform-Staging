@@ -383,6 +383,7 @@ locals {
     "expert-app",
     "laravel-api",
     "lawyered-in-website",
+    "lots247-chatbot",
     "lots247-in",
     "lots247-website",
     "partners-portal-fe",
